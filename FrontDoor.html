@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Andrew Erdman | Front-End Web Development</title>
+    <meta http-equiv="refresh" content="17;url=./index.html" />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Oswald:wght@200;300;400;600;700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #35363A;
+            color: white;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            font-size: 1.1em;
+        }
+
+        .container {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100vh;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .text {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .textclass {
+            color: #04AA6D;
+        }
+
+        .textclass2 {
+            color: #4c8bf5;
+        }
+
+        .textclass3 {
+            color: #de5246;
+        }
+
+
+        .t1 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: type 2s steps(19, end), curser1 0.8s 4;
+            border-right: 8px solid transparent;
+            animation-delay: 0;
+            transition: 0.2s;
+            max-width:62%;
+        }
+
+        .t2 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: type 2s steps(19, end), curser1 0.8s 5;
+            border-right: 8px solid white;
+            animation-fill-mode: both;
+            animation-delay: 3s;
+            max-width: 100%;
+        }
+
+        .t3 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: type 2s steps(19, end), curser1 0.8s 4;
+            border-right: 8px solid white;
+            animation-fill-mode: both;
+            animation-delay: 7s;
+            max-width: 33%;
+        }
+        .t4 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+           
+            animation-fill-mode: both;
+            animation: type 6s backwards;
+            animation-delay: 10s;
+            font-family: 'Libre Barcode 39', cursive;
+            color:yellow;
+           
+        }
+       
+
+        .t1:active {
+            border-right: 8px solid transparent;
+        }
+
+        @keyframes type {
+            0% {
+                width: 0;
+            }
+
+            100% {
+                width: 100%;
+            }
+        }
+
+        @keyframes curser {
+            0% {
+                border-color: transparent;
+            }
+
+            50% {
+                border-color: white;
+            }
+
+            100% {
+                border-color: transparent;
+            }
+        }
+
+        @keyframes curser1 {
+            0% {
+                border-color: transparent;
+            }
+
+            50% {
+                border-color: white;
+            }
+
+            100% {
+                border-color: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class='text t1'>Hi.  My name is <span class='textclass'>Andrew Erdman.</span></h1>
+        <h1 class='text t2'>I love <span class='textclass2'>problem solving</span> and <span class='textclass2'>front-end web development.</span></h1>
+        <h1 class='text t3'>I also love <span class='textclass3'>pizza...</span></h1>
+        <br /><br />
+              <h1 class="text t4">000000000000000000<span style="font-family:Oswald;font-size:22px;color:yellow;">&nbsp;&nbsp;&nbsp;L O A D I N G&nbsp;&nbsp;&nbsp;P O R T F O L I O&nbsp;&nbsp;&nbsp;</span>000000000000000000</h1>
+    </div>
+</body>
+</html>
