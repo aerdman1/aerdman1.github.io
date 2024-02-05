@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-  
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
             "Header-logo-img", "Sidebar-list", "Header-link", "Sidebar-item",
             "VariableMenu-Container", "VariableMenu-Menu", "VariableMenuItem-Container-name",
             "VariableMenuItem-Container-type", "VariableMenuItem-Container", "VariableMenuItem",
-            "VariableMenu", "Sidebar-heading", "ChangelogPage_list", "ChangelogPage_list-post", "SearchBert", "SearchBert-Prompt"
+            "VariableMenu", "Sidebar-heading", "ChangelogPage_list", "ChangelogPage_list-post", "SearchBert", "SearchBert-Prompt", "a.NavItem-item"
         ];
 
         function modifyCssContent(cssContent, classNames) {
@@ -34,17 +34,38 @@
             classNames.sort((a, b) => b.length - a.length);
 
             classNames.forEach(baseClassName => {
-                const regex = new RegExp('\\.' + escapeRegExp(baseClassName) + '(\\w*)', 'g');
-                cssContent = cssContent.replace(regex, (match, p1) => {
+                let regex;
+                let replacement;
+
+                // Special handling for selectors that start with 'a.'
+                if (baseClassName.startsWith("a.")) {
+                    const classPart = baseClassName.substring(2); // Extract class name without 'a.'
+                    regex = new RegExp('a\\.\\b' + escapeRegExp(classPart) + '\\w*\\b', 'g');
+                    replacement = `a[class*="${classPart}"]`;
+                } else {
+                    regex = new RegExp('\\.' + escapeRegExp(baseClassName) + '\\w*\\b', 'g');
+                    replacement = `[class*="${baseClassName}"]`;
+                }
+
+                cssContent = cssContent.replace(regex, (match) => {
                     totalReplacements++;
-                    let newSelector = `[class*="${baseClassName}"]`;
-                    summaryDetails.push({ original: match.substring(1), modified: newSelector });
-                    return newSelector;
+                    let modifiedSelector = replacement; // Use the determined replacement
+                    summaryDetails.push({
+                        original: match,
+                        modified: modifiedSelector
+                    });
+                    return modifiedSelector;
                 });
             });
 
-            return { modifiedCss: cssContent, totalReplacements: totalReplacements, summaryDetails: summaryDetails };
+            return {
+                modifiedCss: cssContent,
+                totalReplacements: totalReplacements,
+                summaryDetails: summaryDetails
+            };
         }
+
+
 
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
