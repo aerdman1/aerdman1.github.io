@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-  
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,38 +24,26 @@
             "Header-logo-img", "Sidebar-list", "Header-link", "Sidebar-item",
             "VariableMenu-Container", "VariableMenu-Menu", "VariableMenuItem-Container-name",
             "VariableMenuItem-Container-type", "VariableMenuItem-Container", "VariableMenuItem",
-            "VariableMenu", "Sidebar-heading", "ChangelogPage_list", "ChangelogPage_list-post","SearchBert","SearchBert-Prompt"
+            "VariableMenu", "Sidebar-heading", "ChangelogPage_list", "ChangelogPage_list-post", "SearchBert", "SearchBert-Prompt"
         ];
 
         function modifyCssContent(cssContent, classNames) {
             let totalReplacements = 0;
-            let modifiedClassNames = [];
+            let summaryDetails = []; // To store original and modified class names for summary
 
-            // Sort classNames to ensure longer names are processed first
             classNames.sort((a, b) => b.length - a.length);
 
             classNames.forEach(baseClassName => {
-                const escapedBaseClassName = escapeRegExp(baseClassName);
-                const regex = new RegExp('\\.' + escapedBaseClassName + '\\w*', 'g');
-
-                cssContent = cssContent.replace(regex, (match) => {
-                    const className = match.substring(1); // Remove the leading dot
-                    let replaceWith = baseClassName;
-
-                    // Check if the class name extends beyond the base class name
-                    if (className.length > baseClassName.length) {
-                        // Attempt to preserve meaningful suffixes (e.g., '-nav', '-logo-img')
-                        const suffix = className.substring(baseClassName.length).match(/^[a-z-]*/)[0];
-                        replaceWith += suffix;
-                    }
-
+                const regex = new RegExp('\\.' + escapeRegExp(baseClassName) + '(\\w*)', 'g');
+                cssContent = cssContent.replace(regex, (match, p1) => {
                     totalReplacements++;
-                    modifiedClassNames.push(className);
-                    return `[class*="${replaceWith}"]`;
+                    let newSelector = `[class*="${baseClassName}"]`;
+                    summaryDetails.push({ original: match.substring(1), modified: newSelector });
+                    return newSelector;
                 });
             });
 
-            return { modifiedCss: cssContent, totalReplacements: totalReplacements, modifiedClassNames: [...new Set(modifiedClassNames)] };
+            return { modifiedCss: cssContent, totalReplacements: totalReplacements, summaryDetails: summaryDetails };
         }
 
         function escapeRegExp(string) {
@@ -63,72 +51,69 @@
         }
 
         function formatCss(css) {
-            // Break down the CSS into lines, ensuring properties are on new lines
             let lines = css.split(/;(?![^()]*\))/).join(';\n').split('{').join('{\n').split('}').join('\n}\n').split('\n');
             let formattedCss = '';
-            let indent = '  '; // Two spaces for indentation
+            let indent = '  ';
             let insideBlock = false;
 
             lines.forEach(line => {
-                line = line.trim(); // Trim leading and trailing whitespace
-
+                line = line.trim();
                 if (line.endsWith('{')) {
-                    // Selector line, trim right to remove any trailing space before the opening brace
                     formattedCss += line.trimRight() + '\n';
                     insideBlock = true;
                 } else if (line.startsWith('}')) {
-                    // Closing brace of a block, ensure it's on a new line and reset the block flag
                     formattedCss += line + '\n';
                     insideBlock = false;
                 } else if (insideBlock && line) {
-                    // Property line; ensure it's indented and ends with a semicolon
                     formattedCss += indent + line + (line.endsWith(';') ? '' : ';') + '\n';
                 } else if (line) {
-                    // For any other content (e.g., comments or at-rules like @media), just add it as is
                     formattedCss += line + '\n';
                 }
             });
 
-            return formattedCss.trim(); // Ensure we don't have trailing newlines
+            return formattedCss.trim();
         }
 
-        function displayResult(modifiedCss, modifiedClassNames) {
+        function displayResult(modifiedCss, summaryDetails) {
             const formattedCss = formatCss(modifiedCss);
-            cssOutputEditor.setValue(formattedCss); // Use setValue() for CodeMirror
+            cssOutputEditor.setValue(formattedCss);
 
-            // Ensure summary is updated correctly based on modifiedClassNames
-            const summaryText = modifiedClassNames.length > 0
-                ? `<span class="summaryTotal">${modifiedClassNames.length} classes scrubbed:</span><br><span class="summaryList">${modifiedClassNames.join('<br>')}</span>`
-                : "No classes scrubbed yet"; // Show this if no classes were modified
-            document.getElementById('summary').innerHTML = summaryText;
+            let summaryHtml = summaryDetails.length > 0
+                ? `<span class="summaryTotal">${summaryDetails.length} classes scrubbed:</span><br>`
+                : "No classes scrubbed yet";
 
-            // Show or hide the "Copy CSS" button based on whether there is output
+            summaryDetails.forEach(detail => {
+                summaryHtml += `<span class="originalClass">${detail.original}</span> ▸ <span class="modifiedClass">${detail.modified}</span><br>`;
+            });
+
+            document.getElementById('summary').innerHTML = summaryHtml;
+
             const copyCssButton = document.getElementById('copyCssButton');
-            copyCssButton.style.display = formattedCss.trim().length > 0 ? 'block' : 'none'; // Show or hide the button
+            copyCssButton.style.display = formattedCss.trim().length > 0 ? 'block' : 'none';
         }
+
 
         function processCSS() {
-            const cssInput = cssInputEditor.getValue(); // Get value from CodeMirror editor
-            const cssFileInput = document.getElementById('cssFile'); // Get the file input element
-            const file = cssFileInput.files[0]; // Get the first file if any
+            const cssInput = cssInputEditor.getValue();
+            const cssFileInput = document.getElementById('cssFile');
+            const file = cssFileInput.files[0];
 
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const fileContent = e.target.result;
                     const result = modifyCssContent(fileContent, classNames);
-                    displayResult(result.modifiedCss, result.modifiedClassNames);
+                    displayResult(result.modifiedCss, result.summaryDetails);
                 };
                 reader.readAsText(file);
-            } else if (cssInput.trim()) { // Check if input is not just whitespace
+            } else if (cssInput.trim()) {
                 const result = modifyCssContent(cssInput, classNames);
-                displayResult(result.modifiedCss, result.modifiedClassNames);
+                displayResult(result.modifiedCss, result.summaryDetails);
             } else {
                 alert("Please paste CSS or upload a CSS file.");
             }
         }
 
-        // This part initializes both the input and output areas with CodeMirror
         document.addEventListener('DOMContentLoaded', function () {
             cssInputEditor = CodeMirror.fromTextArea(document.getElementById('cssInput'), {
                 lineNumbers: true,
@@ -140,7 +125,7 @@
                 lineNumbers: true,
                 mode: "css",
                 theme: "default",
-                readOnly: true // Make the output editor read-only
+                readOnly: true
             });
         });
     </script>
@@ -155,6 +140,16 @@
             .container-xl {
                 max-width: 1440px;
             }
+        }
+
+        .originalClass {
+            color: red;
+            /* Red color for original class names */
+        }
+
+        .modifiedClass {
+            color: green;
+            /* Green color for modified class selectors */
         }
 
         .CodeMirror-code {
@@ -174,14 +169,12 @@
         .summaryTotal {
             font-weight: bold;
             color: #007bff;
-            /* Bootstrap primary blue for example */
             font-size: 20px;
         }
 
         .summaryList {
             color: #000;
-            /* Bootstrap success green for example */
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .custom-file-upload {
