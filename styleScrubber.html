@@ -294,17 +294,7 @@
             classNames.forEach(baseClassName => {
                 let regex;
                 let replacement;
-
-                // Special handling for selectors that start with 'a.'
-                //if (baseClassName.startsWith("a.")) {
-                    //const classPart = baseClassName.substring(2); // Extract class name without 'a.'
-                    //regex = new RegExp('a\\.\\b' + escapeRegExp(classPart) + '\\w*\\b', 'g');
-                    //replacement = `a[class*="${classPart}"]`;
-                //} else {
-                  //  regex = new RegExp('\\.' + escapeRegExp(baseClassName) + '\\w*\\b', 'g');
-                    //replacement = `[class*="${baseClassName}"]`;
-                //}
-
+             
                 cssContent = cssContent.replace(regex, (match) => {
                     totalReplacements++;
                     let modifiedSelector = replacement; // Use the determined replacement
