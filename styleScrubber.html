@@ -285,34 +285,45 @@
     "WhatsNext-wrapper",
 ];
 
-        function modifyCssContent(cssContent, classNames) {
-            let totalReplacements = 0;
-            let summaryDetails = []; // To store original and modified class names for summary
+function modifyCssContent(cssContent, classNames) {
+    let totalReplacements = 0;
+    let summaryDetails = []; // To store original and modified class names for summary
 
-            classNames.sort((a, b) => b.length - a.length);
+    // Sort classNames by length in descending order to match the longest first
+    classNames.sort((a, b) => b.length - a.length);
 
-            classNames.forEach(baseClassName => {
-                let regex;
-                let replacement;
-             
-                cssContent = cssContent.replace(regex, (match) => {
-                    totalReplacements++;
-                    let modifiedSelector = replacement; // Use the determined replacement
-                    summaryDetails.push({
-                        original: match,
-                        modified: modifiedSelector
-                    });
-                    return modifiedSelector;
-                });
+    classNames.forEach(baseClassName => {
+        // Create a regex pattern to find the class name with optional additional characters
+        let regexPattern = new RegExp('(\.' + escapeRegExp(baseClassName) + ')([a-zA-Z0-9_-]{12,})\\b', 'g');
+
+        cssContent = cssContent.replace(regexPattern, (match, p1, p2) => {
+            totalReplacements++;
+            let modifiedSelector;
+            // If there are exactly 12 or more characters beyond the base class name, remove the last 12
+            if (p2 && p2.length >= 12) {
+                modifiedSelector = `[class*="${p1.substring(1, p1.length)}"]`;
+            } else {
+                // If there are fewer than 12 characters, keep the class name as is
+                modifiedSelector = `[class*="${p1.substring(1, p1.length + p2.length)}"]`;
+            }
+            summaryDetails.push({
+                original: match,
+                modified: modifiedSelector
             });
+            return modifiedSelector;
+        });
+    });
 
-            return {
-                modifiedCss: cssContent,
-                totalReplacements: totalReplacements,
-                summaryDetails: summaryDetails
-            };
-        }
+    return {
+        modifiedCss: cssContent,
+        totalReplacements: totalReplacements,
+        summaryDetails: summaryDetails
+    };
+}
 
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 
         function escapeRegExp(string) {
