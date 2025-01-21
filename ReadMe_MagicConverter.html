@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Created by Erdman (Modified for Multi-Block Magic Block -> HTML, Marked-based, shows ALL table previews) -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Block to HTML (Multi-Block, ALL Previews)</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teachers:ital,wght@0,400..800;1,400..800&display=swap"
+    rel="stylesheet" />
+  <style>
+    body {
+      background-color: #118cfd;
+      padding: 80px 10%;
+      font-family: "Teachers", sans-serif;
+      font-optical-sizing: auto;
+    }
+
+    .container {
+      position: relative;
+      margin-top: 60px;
+      background-color: #ffffff;
+      padding: 40px 60px;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      max-width: 1500px;
+    }
+
+    .fixed-character {
+      position: absolute;
+      right: -130px;
+      top: -100px;
+      width: 500px;
+      height: auto;
+      z-index: -1;
+    }
+
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm,
+    .container-xl {
+      max-width: 1500px;
+    }
+
+    textarea {
+      font-family: monospace;
+      font-size: 12px !important;
+      resize: none;
+      height: 400px !important;
+      overflow-y: scroll;
+    }
+
+    .btn-custom {
+      background-color: #c906c9;
+      color: white;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px 0 0 0px;
+      float: right;
+      margin-right: 17px;
+      opacity: 1;
+      position: relative;
+    }
+
+    .btn-custom:hover {
+      background-color: rgb(255, 75, 255);
+      color: white;
+    }
+
+    .logo {
+      display: flex;
+      margin: 0 0 20px 0;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      background: white;
+      margin-left: -60px;
+      margin-top: -99px;
+      padding: 25px 30px 15px 50px;
+      border-radius: 24px 25px 14px 0px;
+      width: 540px;
+    }
+
+
+    .logo-text-wrapper {
+      margin-top: 10px;
+      /* Add space between the logo and text */
+    }
+
+
+    .subtitle {
+      font-size: 16px;
+      font-style: italic;
+      margin-top: 5px;
+      /* Space between lines */
+    }
+
+    .logo-textTop {
+      font-family: arial;
+      margin-bottom: 5px;
+      margin-left: 12px;
+      font-weight: 600;
+      display: block;
+      margin-top: -11px !important;
+      color: #118cfd;
+      font-size: 35px;
+      text-transform:lowercase;
+    }
+
+    .logo-text {
+      display: block;
+      width:100% !important; overflow:visible;
+      margin-left: 12px;
+      margin-top: -16px;
+      font-size: 23px;
+      font-weight: 400;
+      font-family: "VT323", monospace;
+      background: linear-gradient(130deg,
+          red,
+          violet,
+          orange,
+          cyan,
+          yellow,
+          violet,
+          orange,
+          red);
+
+      background-size: 300% 300%;
+      /* Controls how “big” the gradient is */
+      -webkit-background-clip: text;
+      /* Ensures background shows through text */
+      -webkit-text-fill-color: transparent;
+      /* Make the text itself transparent */
+
+      /* Animation */
+      animation: rainbowWave 2s ease-in-out 1;
+      /* 
+   - 3s duration
+   - ease-in-out timing
+   - '1' means it runs once. For infinite, do 'infinite'
+   - If you want it to stay on the last color, add 'forwards'
+  */
+    }
+
+    /* Keyframes that shift background-position left <-> right */
+    @keyframes rainbowWave {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .table-preview {
+      font-family: arial;
+    }
+
+    .modal-dialog {
+      max-width: 90%;
+      max-height: 90vh;
+      margin: auto;
+      padding: 60px;
+      position: relative;
+    }
+
+    .modal-content {
+      height: calc(100vh - 120px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      padding: 20px;
+      flex: 1;
+    }
+
+    .modal-footer {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      padding: 10px 20px;
+      border-top: 1px solid #ddd;
+      text-align: right;
+    }
+
+    .mobile-message {
+      display: none;
+    }
+
+    @media (max-width: 960px) {
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        background-color: #118cfd;
+        background-image: url('https://owlbertsio-resized.s3.amazonaws.com/Traffic.psd.png');
+        background-size: 200px;
+        background-repeat: no-repeat;
+        background-position: right top;
+      }
+
+      .container,
+      .fixed-character,
+      .tooltip-container {
+        display: none;
+      }
+
+      .mobile-message {
+        font-family: "Teachers", sans-serif;
+        font-size: 18px;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        background: purple;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: block;
+      }
+    }
+
+    .tooltip-container {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .tooltip-container .tooltip-text {
+      visibility: hidden;
+      width: 400px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 10px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -250px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 13px;
+    }
+
+    .tooltip-container a:hover {
+      text-decoration: none;
+    }
+
+    .tooltip-container .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Show the number of tables in red text */
+    #tableCount {
+      font-size: 14px;
+      color: red;
+      margin-top: 8px;
+      margin-bottom: -10px;
+      font-weight: bold;
+    }
+
+    p img {
+      max-width: 100px;
+    }
+
+    .h5,
+    h5 {
+      font-size: 1.25rem;
+      background: black;
+      color: #00ff00;
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="mobile-message">
+    Mobile View Under Construction - Please use desktop version
+  </div>
+
+  <div class="container">
+    <img src="https://owlbertsio-resized.s3.amazonaws.com/Harry-Potter.psd.png" alt="Character"
+      class="fixed-character" />
+
+    <!-- ReadMe Logo -->
+    <div class="logo-container">
+      <img src="https://www.openapis.org/wp-content/uploads/sites/3/2021/12/readme-blue.png" alt="ReadMe Logo"
+        class="logo" width="200" height="auto" />
+      <div class="logo-text-wrapper">
+        <span class="logo-textTop">Table Wizard</span>
+        <span class="logo-text subtitle">
+          MAGIC BLOCK EDITION!
+          <p style="font-size:15px;display:inline;">⬜ ⬜</p>
+        </span>
+      </div>
+    </div>
+
+    <!-- Form Elements -->
+    <div class="row">
+      <div class="col-md-6">
+        <label style="font-size:16px;font-weight:bold;" for="inputBlock">
+          Magic Block Input
+        </label>
+        <button id="resetButton" class="btn-sm" style="
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            padding: 0px 10px;
+            margin-left: 5px;
+            display: none;
+            margin-top: -5px;
+            padding-bottom: 2px;
+          ">
+          <span style="font-size:15px;padding:0;margin:0;">⟲</span> Reset
+        </button>
+        <textarea id="inputBlock" class="form-control"
+          placeholder="Paste your entire text or Magic Block(s) here..."></textarea>
+      </div>
+
+      <div class="col-md-6">
+        <button id="sampleButton" class="btn btn-custom" style="
+            margin-right: 5%;
+            border-radius: 20px;
+            padding: 5px 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            margin-top: -20px;
+          ">
+          <span style="font-size:15px; vertical-align: top;margin-right:5px;">
+            ↙️
+          </span>
+          <strong style="margin-right:5px;">TRY ME!</strong> Insert Demo Magic
+          Block
+        </button>
+
+        <label style="font-size:16px;font-weight:bold;" for="outputHtml">
+          HTML Output (tables only)
+        </label>
+        <textarea id="outputHtml" class="form-control" readonly
+          placeholder="Converted HTML will appear here..."></textarea>
+        <button id="copyButton" class="btn btn-custom" style="margin-top: -45px; margin-right: 15px;">
+          Copy
+        </button>
+        <div style="
+            margin-top: 1px;
+            background: black;
+            float: right;
+            font-size: 12px;
+            color: white;
+          " class="timestamp" id="timestamp"></div>
+      </div>
+    </div>
+
+    <!-- Table Count Notice -->
+    <div id="tableCount"></div>
+
+    <!-- All Table Previews Title -->
+    <h3 id="allPreviewsTitle" style="display:none; margin-top:20px;">
+      <hr />
+      <span>All Table Previews (first 2 rows each)</span>
+    </h3>
+
+    <!-- Where we will display partial previews of all tables -->
+    <div id="allTablePreviews"></div>
+
+  </div>
+
+  <!-- "What does this tool do?" link -->
+  <div class="tooltip-container" style="margin-top: 20px; float:right;">
+    <a style="color:white;" href="javascript:void(0)">🔍 What does this tool do?</a>
+    <div class="tooltip-text">
+      <strong>Instructions:</strong><br /><br />
+      <ul>
+        <li>
+          <strong>Paste any text:</strong> If it has one or more <em>[block:parameters]</em> sections, we'll parse each!
+        </li>
+        <li><strong>Auto Conversion:</strong> Instantly converts each Magic Block to an HTML table.</li>
+        <li><strong>Preview:</strong> Now shows a partial preview of <em>each</em> table. Each partial preview is the
+          first two rows only.</li>
+        <li><strong>Copy &amp; Paste:</strong> Use the <HTMLBlock> wrapped output wherever you want.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS and dependencies -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <!-- Marked JS (Robust Markdown parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- JavaScript for Magic Block -> HTML (showing ALL partial previews) -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const copyButton = document.getElementById("copyButton");
+      const outputTextarea = document.getElementById("outputHtml");
+      const inputBlockTextarea = document.getElementById("inputBlock");
+      const sampleButton = document.getElementById("sampleButton");
+      const resetButton = document.getElementById("resetButton");
+      const timestamp = document.getElementById("timestamp");
+      const tableCountElem = document.getElementById("tableCount");
+
+      // The container for showing partial previews of ALL tables
+      const allPreviewsTitle = document.getElementById("allPreviewsTitle");
+      const allTablePreviews = document.getElementById("allTablePreviews");
+
+      // Listen for input changes
+      inputBlockTextarea.addEventListener("input", function () {
+        if (inputBlockTextarea.value.trim() !== "") {
+          resetButton.style.display = "inline-block";
+        } else {
+          resetButton.style.display = "none";
+        }
+        convertAllBlocks();
+      });
+
+      // Copy to clipboard
+      copyButton.addEventListener("click", function () {
+        outputTextarea.select();
+        document.execCommand("copy");
+        alert("Copied to clipboard!");
+      });
+
+      // Insert sample Magic Block
+      sampleButton.addEventListener("click", function () {
+        const sampleMagicBlock = `[block:parameters]
+{
+  "data": {
+    "h-0": "**Name**",
+    "h-1": "**Facts**",
+    "h-2": "**Code**",
+    "0-0": "Alice",
+    "0-1": "- Loves **chocolate**\\n- \`_Italics_\` item\\n- Another bullet",
+    "0-2": "\`console.log(\\"Hello, world!\\")\`",
+    "1-0": "Bob",
+    "1-1": "Enjoys [ReadMe Docs](https://docs.readme.com)\\n**Bold** statement here.",
+    "1-2": "\`\`\`js\\nfunction test() {\\n  return \\"Testing code fence\\";\\n}\\n\`\`\`",
+    "2-0": "Charlie",
+    "2-1": "Has an image: ![Owl](https://readme.com/static/owlberts/owlejandro-celebrating.png)",
+    "2-2": "_Italics_ plus ~~strikethrough~~"
+  },
+  "cols": 3,
+  "rows": 3
+}
+[/block]
+
+[block:parameters]
+{
+  "data": {
+    "h-0": "**Title**",
+    "h-1": "**Description**",
+    "0-0": "1) \`inline code\`\\n2) **Bold** text\\n3) [Link test](http://example.com)",
+    "0-1": "Here’s a multi-line bullet list:\\n- Item A\\n- Item B\\n- Nested:\\n  - Sub-bullet\\n  - Sub-bullet",
+    "1-0": "Image test: ![Alt text](https://www.readme.com/static/owlberts/owlejandro-celebrating.png)",
+    "1-1": "_Italics_ plus \`code\` plus [Google](http://google.com)",
+    "2-0": "Any random text\\nEven more text next line",
+    "2-1": "Blockquote style?\\n> A quote from somewhere"
+  },
+  "cols": 2,
+  "rows": 3
+}
+[/block]
+
+[block:parameters]
+{
+  "data": {
+    "h-0": "**Col A**",
+    "h-1": "**Col B**",
+    "0-0": "[**Bold Link**](https://docs.readme.com)\\n\\nLine break plus \`inline code\`",
+    "0-1": "Short table test with multiple lines.\\nLine2\\nLine3",
+    "1-0": "Image w/ alt text: ![Inspector Owl](https://owlbertsio-resized.s3.amazonaws.com/Inspector-Owlbert.png.png)\\nA final bullet list:\\n- One\\n- Two\\n- Three",
+    "1-1": "### Mini heading\\n\\n- \`_Italics bullet_\`\\n- \`code bullet\`\\n\\n**This** is good."
+  },
+  "cols": 2,
+  "rows": 2
+}
+[/block]`;
+
+        inputBlockTextarea.value = sampleMagicBlock;
+        inputBlockTextarea.dispatchEvent(new Event("input"));
+      });
+
+      // Reset all fields
+      resetButton.addEventListener("click", function () {
+        const confirmation = confirm(
+          "Are you sure you want to reset all fields? This action cannot be undone."
+        );
+        if (confirmation) {
+          inputBlockTextarea.value = "";
+          outputTextarea.value = "";
+          resetButton.style.display = "none";
+          allTablePreviews.innerHTML = "";
+          allPreviewsTitle.style.display = "none";
+          tableCountElem.textContent = "";
+          updateTimestamp(true);
+        }
+      });
+
+      // Main function to parse ALL Magic Blocks from the input
+      function convertAllBlocks() {
+        const input = inputBlockTextarea.value.trim();
+        if (!input) {
+          // No input
+          outputTextarea.value = "";
+          allTablePreviews.innerHTML = "";
+          allPreviewsTitle.style.display = "none";
+          tableCountElem.textContent = "";
+          updateTimestamp(true);
+          return;
+        }
+
+        // Regex to find all [block:parameters] ... [/block] sections
+        const blockRegex = /\[block:parameters\]\s*({[\s\S]*?})\s*\[\/block\]/g;
+        const blockJsons = [];
+        let match;
+
+        while ((match = blockRegex.exec(input)) !== null) {
+          blockJsons.push(match[1]);
+        }
+
+        if (blockJsons.length === 0) {
+          // No blocks found
+          outputTextarea.value = "";
+          allTablePreviews.innerHTML = "";
+          allPreviewsTitle.style.display = "none";
+          tableCountElem.textContent = "0 tables detected (no Magic Blocks in the input)";
+          updateTimestamp(false);
+          return;
+        }
+
+        // We have N blocks, parse each
+        tableCountElem.textContent = `${blockJsons.length} table(s) detected!`;
+
+        const allTableHtmls = [];
+        allTablePreviews.innerHTML = ""; // Clear any old previews
+
+        // For each block, parse JSON -> HTML table, produce partial preview, etc.
+        blockJsons.forEach((jsonString, index) => {
+          let tableHtml = "<p>Error parsing JSON</p>";
+          try {
+            const jsonData = JSON.parse(jsonString);
+            tableHtml = jsonToHtmlTable(jsonData);
+          } catch (err) {
+            console.error("JSON parse error:", err);
+          }
+
+          // Wrap in <HTMLBlock>
+          const wrapped = `<HTMLBlock>{\`\n${tableHtml}\n\`}</HTMLBlock>`;
+          allTableHtmls.push(wrapped);
+
+          // Create partial preview for this table
+          const partial = generatePartialPreview(tableHtml);
+
+          // Add to the "allTablePreviews" container
+          const containerDiv = document.createElement("div");
+          containerDiv.style.marginBottom = "20px";
+          containerDiv.innerHTML = `<h5>Table #${index + 1} Preview:</h5>` + partial;
+          allTablePreviews.appendChild(containerDiv);
+        });
+
+        // We have at least one block, so show the allPreviewsTitle
+        allPreviewsTitle.style.display = "block";
+
+        // The final output is all the <HTMLBlock> items, concatenated
+        outputTextarea.value = allTableHtmls.join("\n\n");
+        updateTimestamp(false);
+      }
+
+      // Convert a single JSON block to <table> with Marked
+      function jsonToHtmlTable(jsonData) {
+        if (!jsonData || !jsonData.data || jsonData.cols == null || jsonData.rows == null) {
+          return "<p>Invalid table JSON</p>";
+        }
+        const { data, cols, rows } = jsonData;
+
+        let html = `<table style="width: 100%; border-collapse: collapse;">\n`;
+        html += `<thead>\n<tr>\n`;
+
+        // Table headers
+        for (let i = 0; i < cols; i++) {
+          const rawHeader = data["h-" + i] || "";
+          const renderedHeader = marked.parseInline(rawHeader);
+          html += `  <th style="border: 1px solid #ddd; padding: 8px;">${renderedHeader}</th>\n`;
+        }
+        html += `</tr>\n</thead>\n<tbody>\n`;
+
+        // Rows & cells
+        for (let r = 0; r < rows; r++) {
+          html += `<tr>\n`;
+          for (let c = 0; c < cols; c++) {
+            const cellMd = data[`${r}-${c}`] || "";
+            const renderedCell = marked.parse(cellMd);
+            html += `  <td style="border: 1px solid #ddd; padding: 8px;">${renderedCell}</td>\n`;
+          }
+          html += `</tr>\n`;
+        }
+        html += `</tbody>\n</table>`;
+        return html;
+      }
+
+      // Show only the first 2 data rows for partial preview
+      function generatePartialPreview(htmlTable) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlTable, "text/html");
+        const table = doc.querySelector("table");
+        if (!table) {
+          return "<p>No table preview available.</p>";
+        }
+
+        const cloneTable = table.cloneNode(true);
+        const bodyRows = cloneTable.querySelectorAll("tbody tr");
+
+        // Keep only the first 2 data rows
+        for (let i = 2; i < bodyRows.length; i++) {
+          bodyRows[i].remove();
+        }
+        return cloneTable.outerHTML;
+      }
+
+      function updateTimestamp(clear) {
+        if (clear) {
+          timestamp.innerHTML = "";
+          return;
+        }
+        const timeStr = new Date().toLocaleString("en-US", {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        });
+        timestamp.innerHTML = `<span style="color: #00ff00;padding-left:5px;"> ✔ CONVERTED:</span> ${timeStr} &nbsp; `;
+      }
+
+    });
+  </script>
+</body>
+
+</html>
