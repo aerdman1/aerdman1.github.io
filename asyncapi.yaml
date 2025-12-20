@@ -1,0 +1,412 @@
+asyncapi: 3.0.0
+id: urn:example:readme:test:asyncapi
+info:
+  title: AsyncAPI Test Spec (Kitchen Sink)
+  version: 0.1.0
+  description: |
+    A deliberately broad AsyncAPI document used for testing tooling:
+    - Multiple servers (kafka/ws/mqtt)
+    - Channel parameters + address expressions
+    - Operations (send/receive) + request/reply
+    - Message traits + correlationId + examples
+    - JSON Schema payloads + one Avro payload (Multi Format Schema)
+
+defaultContentType: application/json
+
+servers:
+  kafkaProd:
+    host: kafka.example.com:9092
+    protocol: kafka
+    protocolVersion: "3.5"
+    description: Production Kafka broker
+    tags:
+      - name: env:prod
+  wsDev:
+    host: ws.example.com:443
+    protocol: ws
+    pathname: /realtime/{tenantId}
+    description: Dev WebSocket endpoint with a tenantId path var
+    variables:
+      tenantId:
+        description: Tenant identifier used in the WebSocket path
+        default: demo
+        examples: [demo, acme]
+    tags:
+      - name: env:dev
+  mqttStage:
+    host: mqtt.example.com:8883
+    protocol: mqtt
+    protocolVersion: "5"
+    description: Staging MQTT broker
+    tags:
+      - name: env:staging
+
+channels:
+  userSignedUp:
+    title: User Signed Up Events
+    address: users.signedup
+    messages:
+      userSignedUp:
+        $ref: "#/components/messages/UserSignedUp"
+
+  userCommands:
+    title: Per-user command stream
+    address: users.{userId}.commands
+    parameters:
+      userId:
+        description: User id in the channel address
+        location: $message.payload#/userId
+    messages:
+      userCommandRequested:
+        $ref: "#/components/messages/UserCommandRequested"
+
+  userProfileRequests:
+    title: Request user profile (request/reply example)
+    address: users.profile.get
+    messages:
+      userProfileRequest:
+        $ref: "#/components/messages/UserProfileRequest"
+
+  userProfileReplies:
+    title: Reply channel for user profile responses
+    address: null
+    messages:
+      userProfileResponse:
+        $ref: "#/components/messages/UserProfileResponse"
+
+  avroUserSnapshot:
+    title: Avro payload example channel
+    address: users.snapshot.avro
+    messages:
+      avroSnapshot:
+        $ref: "#/components/messages/AvroUserSnapshot"
+
+operations:
+  publishUserSignedUp:
+    title: Publish UserSignedUp
+    summary: Sends a user signup event
+    action: send
+    channel:
+      $ref: "#/channels/userSignedUp"
+    messages:
+      - $ref: "#/components/messages/UserSignedUp"
+    security:
+      - oauth2CC: [events:write]
+    traits:
+      - $ref: "#/components/operationTraits/commonTags"
+
+  consumeUserSignedUp:
+    title: Consume UserSignedUp
+    summary: Receives user signup events
+    action: receive
+    channel:
+      $ref: "#/channels/userSignedUp"
+    messages:
+      - $ref: "#/components/messages/UserSignedUp"
+    security:
+      - httpApiKey: []
+    traits:
+      - $ref: "#/components/operationTraits/commonTags"
+
+  publishUserCommand:
+    title: Publish UserCommandRequested
+    summary: Sends a command addressed to a specific user
+    action: send
+    channel:
+      $ref: "#/channels/userCommands"
+    messages:
+      - $ref: "#/components/messages/UserCommandRequested"
+    security:
+      - oauth2CC: [commands:write]
+
+  requestUserProfile:
+    title: Request user profile (request/reply)
+    summary: Sends a profile request and expects a response on a dynamic reply address
+    action: send
+    channel:
+      $ref: "#/channels/userProfileRequests"
+    messages:
+      - $ref: "#/components/messages/UserProfileRequest"
+    reply:
+      address:
+        description: Reply-to address supplied in request headers
+        location: $message.header#/replyTo
+      channel:
+        $ref: "#/channels/userProfileReplies"
+      messages:
+        - $ref: "#/components/messages/UserProfileResponse"
+    security:
+      - oauth2CC: [profile:read]
+
+  consumeAvroSnapshot:
+    title: Consume Avro user snapshots
+    action: receive
+    channel:
+      $ref: "#/channels/avroUserSnapshot"
+    messages:
+      - $ref: "#/components/messages/AvroUserSnapshot"
+
+components:
+  securitySchemes:
+    oauth2CC:
+      type: oauth2
+      description: OAuth2 Client Credentials
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth/token
+          availableScopes:
+            events:write: Publish events
+            commands:write: Publish commands
+            profile:read: Read user profile
+      scopes: []
+    httpApiKey:
+      type: httpApiKey
+      name: x-api-key
+      in: header
+      description: Simple API key header auth
+
+  correlationIds:
+    default:
+      description: Default correlation id carried in message header
+      location: $message.header#/correlationId
+
+  operationTraits:
+    commonTags:
+      tags:
+        - name: test
+        - name: kitchen-sink
+      x-trait-note: this is an extension field for testing
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        additionalProperties: false
+        properties:
+          correlationId:
+            type: string
+            description: Correlation id for tracing
+          producedAt:
+            type: string
+            format: date-time
+          replyTo:
+            type: string
+            description: Dynamic reply address (used by request/reply test)
+        required: [correlationId, producedAt]
+
+  schemas:
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+      required: [id, email]
+
+    SignupEvent:
+      type: object
+      additionalProperties: false
+      properties:
+        eventType:
+          type: string
+          const: UserSignedUp
+        user:
+          $ref: "#/components/schemas/User"
+        source:
+          type: string
+          enum: [web, mobile, api]
+        occurredAt:
+          type: string
+          format: date-time
+      required: [eventType, user, source, occurredAt]
+
+    CommandRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        commandType:
+          type: string
+          enum: [ResetPassword, DisableUser]
+        userId:
+          type: string
+          format: uuid
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/ResetPasswordData"
+            - $ref: "#/components/schemas/DisableUserData"
+      required: [commandType, userId]
+
+    ResetPasswordData:
+      type: object
+      additionalProperties: false
+      properties:
+        temporary:
+          type: boolean
+          default: true
+      required: [temporary]
+
+    DisableUserData:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required: [reason]
+
+    UserProfileRequestPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          format: uuid
+      required: [userId]
+
+    UserProfileResponsePayload:
+      type: object
+      additionalProperties: false
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        requestId:
+          type: string
+      required: [user, requestId]
+
+  messages:
+    UserSignedUp:
+      name: UserSignedUp
+      title: User Signed Up
+      summary: Emitted when a user successfully signs up
+      correlationId:
+        $ref: "#/components/correlationIds/default"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      headers:
+        type: object
+        additionalProperties: false
+        properties:
+          correlationId:
+            type: string
+          producedAt:
+            type: string
+            format: date-time
+        required: [correlationId, producedAt]
+      payload:
+        $ref: "#/components/schemas/SignupEvent"
+      examples:
+        - name: minimal
+          summary: Minimal valid example
+          headers:
+            correlationId: 2f3b0c3a-9d8c-4f3a-8f2c-6b6c6e7d1111
+            producedAt: "2025-12-19T12:00:00Z"
+          payload:
+            eventType: UserSignedUp
+            user:
+              id: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
+              email: test@example.com
+              name: Test User
+            source: web
+            occurredAt: "2025-12-19T11:59:59Z"
+
+    UserCommandRequested:
+      name: UserCommandRequested
+      title: User Command Requested
+      summary: A command directed at a specific user
+      correlationId:
+        $ref: "#/components/correlationIds/default"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/CommandRequest"
+      examples:
+        - name: disable-user
+          headers:
+            correlationId: 11111111-2222-3333-4444-555555555555
+            producedAt: "2025-12-19T12:05:00Z"
+          payload:
+            commandType: DisableUser
+            userId: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
+            data:
+              reason: "Chargeback fraud"
+
+    UserProfileRequest:
+      name: UserProfileRequest
+      title: User Profile Request
+      summary: Requests a user profile (pairs with UserProfileResponse)
+      correlationId:
+        $ref: "#/components/correlationIds/default"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/UserProfileRequestPayload"
+      examples:
+        - name: request-with-replyto
+          headers:
+            correlationId: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+            producedAt: "2025-12-19T12:10:00Z"
+            replyTo: users.profile.reply.inbox.12345
+          payload:
+            userId: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
+
+    UserProfileResponse:
+      name: UserProfileResponse
+      title: User Profile Response
+      summary: Response to a user profile request
+      correlationId:
+        $ref: "#/components/correlationIds/default"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/UserProfileResponsePayload"
+      examples:
+        - name: happy-path
+          headers:
+            correlationId: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+            producedAt: "2025-12-19T12:10:01Z"
+          payload:
+            requestId: "req_12345"
+            user:
+              id: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
+              email: test@example.com
+              name: Test User
+
+    AvroUserSnapshot:
+      name: AvroUserSnapshot
+      title: Avro User Snapshot
+      summary: Same “user” concept but expressed as an Avro schema (Multi Format Schema Object test)
+      correlationId:
+        $ref: "#/components/correlationIds/default"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        schemaFormat: "application/vnd.apache.avro;version=1.9.0"
+        schema:
+          type: record
+          name: UserSnapshot
+          namespace: com.example
+          doc: A compact snapshot of a user record
+          fields:
+            - name: id
+              type: string
+            - name: email
+              type: ["null", "string"]
+              default: null
+            - name: active
+              type: boolean
+              default: true
+      examples:
+        - name: avro-example
+          headers:
+            correlationId: ffffffff-1111-2222-3333-444444444444
+            producedAt: "2025-12-19T12:15:00Z"
+          payload:
+            id: "0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001"
+            email: "test@example.com"
+            active: true
