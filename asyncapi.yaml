@@ -1,17 +1,39 @@
 asyncapi: 3.0.0
 id: urn:example:readme:test:asyncapi
+
 info:
   title: AsyncAPI Test Spec (Kitchen Sink)
-  version: 0.1.0
+  version: 0.2.0
   description: |
     A deliberately broad AsyncAPI document used for testing tooling:
     - Multiple servers (kafka/ws/mqtt)
-    - Channel parameters + address expressions
-    - Operations (send/receive) + request/reply
-    - Message traits + correlationId + examples
+    - Server variables + tags + security
+    - Channel parameters + address expressions + bindings
+    - Operations (send/receive) + request/reply + traits + bindings + security
+    - Message traits + correlationId + examples + headers + multiple contentTypes
     - JSON Schema payloads + one Avro payload (Multi Format Schema)
+    - Extensions (x-*) sprinkled throughout
+
+  contact:
+    name: Kitchen Sink Support
+    url: https://example.com/support
+    email: support@example.com
+
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
 
 defaultContentType: application/json
+
+externalDocs:
+  description: External docs (placeholder)
+  url: https://example.com/docs
+
+tags:
+  - name: kitchen-sink
+    description: Test spec used for validating renderers and tooling
+  - name: experimental
+    description: Intentionally includes edge cases and optional fields
 
 servers:
   kafkaProd:
@@ -19,8 +41,21 @@ servers:
     protocol: kafka
     protocolVersion: "3.5"
     description: Production Kafka broker
+    security:
+      - httpApiKey: []
     tags:
       - name: env:prod
+      - name: kind:kafka
+    bindings:
+      kafka:
+        clientId:
+          type: string
+          enum: [kitchen-sink-client]
+        groupId:
+          type: string
+          enum: [kitchen-sink-group]
+    x-server-note: "Server extension field for testing"
+
   wsDev:
     host: ws.example.com:443
     protocol: ws
@@ -31,55 +66,158 @@ servers:
         description: Tenant identifier used in the WebSocket path
         default: demo
         examples: [demo, acme]
+    security:
+      - oauth2CC: [ws:connect]
     tags:
       - name: env:dev
+      - name: kind:websocket
+    bindings:
+      ws:
+        method: GET
+        query:
+          type: object
+          additionalProperties: false
+          properties:
+            token:
+              type: string
+              description: Optional auth token
+    x-server-note: "Another server extension field"
+
   mqttStage:
     host: mqtt.example.com:8883
     protocol: mqtt
     protocolVersion: "5"
     description: Staging MQTT broker
+    security:
+      - mqttUserPass: []
     tags:
       - name: env:staging
+      - name: kind:mqtt
+    bindings:
+      mqtt:
+        cleanSession: true
+        keepAlive: 60
+    x-server-note: "MQTT server extension field"
 
 channels:
   userSignedUp:
     title: User Signed Up Events
+    description: Events emitted when a user signs up.
     address: users.signedup
+    servers: [kafkaProd]
+    bindings:
+      kafka:
+        topicConfiguration:
+          cleanup.policy: compact
+          retention.ms: 604800000
+    tags:
+      - name: events
+      - name: user
     messages:
       userSignedUp:
         $ref: "#/components/messages/UserSignedUp"
+    x-channel-note: "Channel extension field"
 
   userCommands:
     title: Per-user command stream
+    description: Commands addressed to specific users.
     address: users.{userId}.commands
+    servers: [kafkaProd]
     parameters:
       userId:
-        description: User id in the channel address
-        location: $message.payload#/userId
+        $ref: "#/components/parameters/UserId"
+    bindings:
+      kafka:
+        partitions: 6
+        replicas: 3
+    tags:
+      - name: commands
+      - name: user
     messages:
       userCommandRequested:
         $ref: "#/components/messages/UserCommandRequested"
 
   userProfileRequests:
     title: Request user profile (request/reply example)
+    description: Request channel used for user profile lookups.
     address: users.profile.get
+    servers: [kafkaProd]
+    bindings:
+      kafka:
+        partitions: 3
+    tags:
+      - name: request-reply
+      - name: profile
     messages:
       userProfileRequest:
         $ref: "#/components/messages/UserProfileRequest"
 
   userProfileReplies:
     title: Reply channel for user profile responses
+    description: Logical reply channel; reply address is provided dynamically in headers.
     address: null
+    servers: [kafkaProd]
+    tags:
+      - name: request-reply
+      - name: profile
     messages:
       userProfileResponse:
         $ref: "#/components/messages/UserProfileResponse"
 
   avroUserSnapshot:
     title: Avro payload example channel
+    description: Demonstrates Multi Format Schema payload.
     address: users.snapshot.avro
+    servers: [kafkaProd]
+    bindings:
+      kafka:
+        partitions: 1
+        replicas: 1
+    tags:
+      - name: avro
+      - name: snapshot
     messages:
       avroSnapshot:
         $ref: "#/components/messages/AvroUserSnapshot"
+
+  wsUserPresence:
+    title: WebSocket user presence stream
+    description: WebSocket channel with a parameterized address.
+    address: presence.{tenantId}.{userId}
+    servers: [wsDev]
+    parameters:
+      tenantId:
+        $ref: "#/components/parameters/TenantId"
+      userId:
+        $ref: "#/components/parameters/UserId"
+    bindings:
+      ws:
+        bindingVersion: "0.1.0"
+    tags:
+      - name: ws
+      - name: presence
+    messages:
+      presencePing:
+        $ref: "#/components/messages/UserPresencePing"
+
+  mqttDeviceTelemetry:
+    title: MQTT device telemetry
+    description: MQTT channel with topic wildcards.
+    address: devices/{deviceId}/telemetry
+    servers: [mqttStage]
+    parameters:
+      deviceId:
+        $ref: "#/components/parameters/DeviceId"
+    bindings:
+      mqtt:
+        qos: 1
+        retain: false
+    tags:
+      - name: mqtt
+      - name: telemetry
+    messages:
+      deviceTelemetry:
+        $ref: "#/components/messages/DeviceTelemetry"
 
 operations:
   publishUserSignedUp:
@@ -94,6 +232,12 @@ operations:
       - oauth2CC: [events:write]
     traits:
       - $ref: "#/components/operationTraits/commonTags"
+      - $ref: "#/components/operationTraits/kafkaDefaults"
+    bindings:
+      kafka:
+        clientId: kitchen-sink-producer
+        groupId: kitchen-sink-group
+    x-operation-note: "Operation extension field"
 
   consumeUserSignedUp:
     title: Consume UserSignedUp
@@ -107,6 +251,11 @@ operations:
       - httpApiKey: []
     traits:
       - $ref: "#/components/operationTraits/commonTags"
+      - $ref: "#/components/operationTraits/kafkaDefaults"
+    bindings:
+      kafka:
+        groupId: kitchen-sink-consumers
+    x-operation-note: "Another extension field"
 
   publishUserCommand:
     title: Publish UserCommandRequested
@@ -118,6 +267,11 @@ operations:
       - $ref: "#/components/messages/UserCommandRequested"
     security:
       - oauth2CC: [commands:write]
+    traits:
+      - $ref: "#/components/operationTraits/kafkaDefaults"
+    bindings:
+      kafka:
+        clientId: kitchen-sink-command-producer
 
   requestUserProfile:
     title: Request user profile (request/reply)
@@ -137,14 +291,57 @@ operations:
         - $ref: "#/components/messages/UserProfileResponse"
     security:
       - oauth2CC: [profile:read]
+    traits:
+      - $ref: "#/components/operationTraits/commonTags"
+    x-request-reply-note: "Request/reply coverage"
 
   consumeAvroSnapshot:
     title: Consume Avro user snapshots
+    summary: Receives Avro user snapshot messages
     action: receive
     channel:
       $ref: "#/channels/avroUserSnapshot"
     messages:
       - $ref: "#/components/messages/AvroUserSnapshot"
+    traits:
+      - $ref: "#/components/operationTraits/kafkaDefaults"
+
+  wsSendPresencePing:
+    title: Send WebSocket presence ping
+    summary: WebSocket send example
+    action: send
+    channel:
+      $ref: "#/channels/wsUserPresence"
+    messages:
+      - $ref: "#/components/messages/UserPresencePing"
+    security:
+      - oauth2CC: [ws:send]
+    traits:
+      - $ref: "#/components/operationTraits/commonTags"
+    bindings:
+      ws:
+        method: POST
+        query:
+          type: object
+          properties:
+            token:
+              type: string
+
+  mqttConsumeTelemetry:
+    title: Consume MQTT device telemetry
+    summary: MQTT receive example
+    action: receive
+    channel:
+      $ref: "#/channels/mqttDeviceTelemetry"
+    messages:
+      - $ref: "#/components/messages/DeviceTelemetry"
+    security:
+      - mqttUserPass: []
+    traits:
+      - $ref: "#/components/operationTraits/commonTags"
+    bindings:
+      mqtt:
+        qos: 1
 
 components:
   securitySchemes:
@@ -158,17 +355,47 @@ components:
             events:write: Publish events
             commands:write: Publish commands
             profile:read: Read user profile
+            ws:connect: Connect to WebSocket server
+            ws:send: Send messages over WebSocket
       scopes: []
+      x-security-note: "OAuth2 extension field"
+
     httpApiKey:
       type: httpApiKey
       name: x-api-key
       in: header
       description: Simple API key header auth
 
+    mqttUserPass:
+      type: userPassword
+      description: MQTT username/password auth
+
   correlationIds:
     default:
       description: Default correlation id carried in message header
       location: $message.header#/correlationId
+
+  parameters:
+    TenantId:
+      description: Tenant identifier
+      location: $message.header#/tenantId
+      schema:
+        type: string
+      examples: [demo, acme]
+
+    UserId:
+      description: User id used in channel addresses/payloads
+      location: $message.payload#/userId
+      schema:
+        type: string
+        format: uuid
+
+    DeviceId:
+      description: Device id for MQTT topics
+      location: $message.header#/deviceId
+      schema:
+        type: string
+      examples: [device-001, device-abc]
 
   operationTraits:
     commonTags:
@@ -176,6 +403,16 @@ components:
         - name: test
         - name: kitchen-sink
       x-trait-note: this is an extension field for testing
+
+    kafkaDefaults:
+      description: Common Kafka trait used by operations
+      bindings:
+        kafka:
+          clientId:
+            type: string
+          groupId:
+            type: string
+      x-kafka-trait-note: "Kafka trait extension"
 
   messageTraits:
     commonHeaders:
@@ -189,6 +426,8 @@ components:
           producedAt:
             type: string
             format: date-time
+          tenantId:
+            type: string
           replyTo:
             type: string
             description: Dynamic reply address (used by request/reply test)
@@ -279,25 +518,50 @@ components:
           type: string
       required: [user, requestId]
 
+    PresencePingPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: ping
+        sentAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+      required: [type, sentAt, userId]
+
+    DeviceTelemetryPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        deviceId:
+          type: string
+        temperatureC:
+          type: number
+        batteryPct:
+          type: integer
+          minimum: 0
+          maximum: 100
+        sentAt:
+          type: string
+          format: date-time
+      required: [deviceId, temperatureC, sentAt]
+
   messages:
     UserSignedUp:
       name: UserSignedUp
       title: User Signed Up
       summary: Emitted when a user successfully signs up
+      contentType: application/json
       correlationId:
         $ref: "#/components/correlationIds/default"
       traits:
         - $ref: "#/components/messageTraits/commonHeaders"
       headers:
-        type: object
-        additionalProperties: false
-        properties:
-          correlationId:
-            type: string
-          producedAt:
-            type: string
-            format: date-time
-        required: [correlationId, producedAt]
+        $ref: "#/components/messageTraits/commonHeaders/headers"
       payload:
         $ref: "#/components/schemas/SignupEvent"
       examples:
@@ -306,6 +570,7 @@ components:
           headers:
             correlationId: 2f3b0c3a-9d8c-4f3a-8f2c-6b6c6e7d1111
             producedAt: "2025-12-19T12:00:00Z"
+            tenantId: demo
           payload:
             eventType: UserSignedUp
             user:
@@ -314,11 +579,26 @@ components:
               name: Test User
             source: web
             occurredAt: "2025-12-19T11:59:59Z"
+        - name: mobile
+          summary: Mobile signup example
+          headers:
+            correlationId: 7b7b7b7b-8888-9999-aaaa-bbbbbbbbbbbb
+            producedAt: "2025-12-19T12:00:30Z"
+            tenantId: acme
+          payload:
+            eventType: UserSignedUp
+            user:
+              id: 11111111-2222-3333-4444-555555555555
+              email: mobile@example.com
+              name: Mobile User
+            source: mobile
+            occurredAt: "2025-12-19T12:00:29Z"
 
     UserCommandRequested:
       name: UserCommandRequested
       title: User Command Requested
       summary: A command directed at a specific user
+      contentType: application/json
       correlationId:
         $ref: "#/components/correlationIds/default"
       traits:
@@ -327,19 +607,33 @@ components:
         $ref: "#/components/schemas/CommandRequest"
       examples:
         - name: disable-user
+          summary: Disable a user
           headers:
             correlationId: 11111111-2222-3333-4444-555555555555
             producedAt: "2025-12-19T12:05:00Z"
+            tenantId: demo
           payload:
             commandType: DisableUser
             userId: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
             data:
               reason: "Chargeback fraud"
+        - name: reset-password
+          summary: Reset password command
+          headers:
+            correlationId: 22222222-3333-4444-5555-666666666666
+            producedAt: "2025-12-19T12:06:00Z"
+            tenantId: acme
+          payload:
+            commandType: ResetPassword
+            userId: 11111111-2222-3333-4444-555555555555
+            data:
+              temporary: true
 
     UserProfileRequest:
       name: UserProfileRequest
       title: User Profile Request
       summary: Requests a user profile (pairs with UserProfileResponse)
+      contentType: application/json
       correlationId:
         $ref: "#/components/correlationIds/default"
       traits:
@@ -348,9 +642,11 @@ components:
         $ref: "#/components/schemas/UserProfileRequestPayload"
       examples:
         - name: request-with-replyto
+          summary: Request with reply-to address
           headers:
             correlationId: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
             producedAt: "2025-12-19T12:10:00Z"
+            tenantId: demo
             replyTo: users.profile.reply.inbox.12345
           payload:
             userId: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
@@ -359,6 +655,7 @@ components:
       name: UserProfileResponse
       title: User Profile Response
       summary: Response to a user profile request
+      contentType: application/json
       correlationId:
         $ref: "#/components/correlationIds/default"
       traits:
@@ -367,9 +664,11 @@ components:
         $ref: "#/components/schemas/UserProfileResponsePayload"
       examples:
         - name: happy-path
+          summary: Successful response
           headers:
             correlationId: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
             producedAt: "2025-12-19T12:10:01Z"
+            tenantId: demo
           payload:
             requestId: "req_12345"
             user:
@@ -377,10 +676,52 @@ components:
               email: test@example.com
               name: Test User
 
+    UserPresencePing:
+      name: UserPresencePing
+      title: User Presence Ping
+      summary: Simple WS ping message
+      contentType: application/json
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/PresencePingPayload"
+      examples:
+        - name: ping
+          headers:
+            correlationId: 33333333-4444-5555-6666-777777777777
+            producedAt: "2025-12-19T12:20:00Z"
+            tenantId: demo
+          payload:
+            type: ping
+            sentAt: "2025-12-19T12:20:00Z"
+            userId: 0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001
+
+    DeviceTelemetry:
+      name: DeviceTelemetry
+      title: Device Telemetry
+      summary: MQTT telemetry payload
+      contentType: application/json
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/DeviceTelemetryPayload"
+      examples:
+        - name: device-001
+          headers:
+            correlationId: 44444444-5555-6666-7777-888888888888
+            producedAt: "2025-12-19T12:25:00Z"
+            tenantId: demo
+          payload:
+            deviceId: device-001
+            temperatureC: 22.4
+            batteryPct: 90
+            sentAt: "2025-12-19T12:25:00Z"
+
     AvroUserSnapshot:
       name: AvroUserSnapshot
       title: Avro User Snapshot
       summary: Same “user” concept but expressed as an Avro schema (Multi Format Schema Object test)
+      contentType: application/json
       correlationId:
         $ref: "#/components/correlationIds/default"
       traits:
@@ -403,9 +744,11 @@ components:
               default: true
       examples:
         - name: avro-example
+          summary: Example Avro-ish payload
           headers:
             correlationId: ffffffff-1111-2222-3333-444444444444
             producedAt: "2025-12-19T12:15:00Z"
+            tenantId: demo
           payload:
             id: "0d1a9c4e-2f1f-4a1d-8a6a-9a4cbd7f0001"
             email: "test@example.com"
