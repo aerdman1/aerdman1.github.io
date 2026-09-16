@@ -1,0 +1,364 @@
+"""
+Orbit — a demonstration GraphQL API for satellite operators.
+
+It is not a real service. It exists so a GraphQL documentation tool has
+something complete to read: every construct the language offers appears here
+at least once, and everything is described, so generated examples and health
+checks have real material to work with.
+
+Highlights worth poking at:
+
+- `Node` is an interface with two implementations.
+- `SearchResult` is a union.
+- `SatelliteConnection` follows the Relay cursor convention.
+- `Satellite.callsign` is deprecated, with a reason.
+- `DateTime`, `Money` and `URL` are custom scalars; `URL` points at a spec.
+- `@internal` and `@rateLimit` are custom directives.
+"""
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+# ---------------------------------------------------------------------------
+# Scalars
+# ---------------------------------------------------------------------------
+
+"An ISO-8601 instant in UTC, for example `2024-01-15T09:30:00Z`."
+scalar DateTime
+
+"""
+A monetary amount as a decimal string, for example `"1499.00"`.
+
+It is a string on purpose: floating point cannot represent money exactly, and
+a rounding error in a launch budget is an expensive kind of bug.
+"""
+scalar Money
+
+"An absolute URL."
+scalar URL @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc3986")
+
+# ---------------------------------------------------------------------------
+# Directives
+# ---------------------------------------------------------------------------
+
+"Marks a field only staff accounts may select. Everyone else gets null."
+directive @internal(
+  "Why the field is restricted."
+  reason: String
+) on FIELD_DEFINITION | OBJECT
+
+"How often a field may be requested, per API key."
+directive @rateLimit(
+  "Requests allowed per window."
+  limit: Int! = 60
+  "Window length in seconds."
+  window: Int! = 60
+) repeatable on FIELD_DEFINITION
+
+# ---------------------------------------------------------------------------
+# Interfaces and enums
+# ---------------------------------------------------------------------------
+
+"Anything with an id that is unique across the whole schema."
+interface Node {
+  "Unique across every type, not just this one."
+  id: ID!
+}
+
+"Anything that records when it was created and last changed."
+interface Timestamped {
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"Where a satellite is in its life."
+enum SatelliteStatus {
+  "Registered, not yet launched."
+  PLANNED
+  "In orbit and working."
+  ACTIVE
+  "Still in orbit, no longer responding."
+  DERELICT
+  "Brought down deliberately."
+  DEORBITED
+  "Split into DERELICT and DEORBITED, which say what actually happened."
+  RETIRED @deprecated(reason: "Use DERELICT or DEORBITED.")
+}
+
+"The band a downlink uses."
+enum Band {
+  UHF
+  S
+  X
+  KU
+  KA
+}
+
+"Which way to sort a list."
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"What to sort satellites by."
+enum SatelliteOrderField {
+  NAME
+  LAUNCHED_AT
+  ALTITUDE
+}
+
+# ---------------------------------------------------------------------------
+# Object types
+# ---------------------------------------------------------------------------
+
+"A satellite in orbit, or one that is on its way there."
+type Satellite implements Node & Timestamped {
+  id: ID!
+  "The name it was registered under with the ITU."
+  name: String!
+  "Where it is in its life."
+  status: SatelliteStatus!
+  "Mean altitude above sea level, in kilometres."
+  altitudeKm: Float
+  "Degrees from the equator. 0 is equatorial, 90 is polar."
+  inclinationDeg: Float
+  "When it reached orbit. Null if it has not launched."
+  launchedAt: DateTime
+  "Whoever flies it."
+  operator: Operator
+  "The bands it can talk on."
+  bands: [Band!]!
+  """
+  Upcoming passes over a ground station, soonest first.
+
+  A station is required: a pass only means anything relative to somewhere on
+  the ground.
+  """
+  passes(
+    "Which ground station to compute passes for."
+    station: ID!
+    "How many to return."
+    first: Int = 10
+    "Only passes rising above this elevation, in degrees."
+    minElevation: Float = 10.0
+  ): [Pass!]! @rateLimit(limit: 30, window: 60)
+  "What it has cost so far, all in."
+  costToDate: Money @internal(reason: "Commercially sensitive.")
+  "The ITU callsign."
+  callsign: String @deprecated(reason: "Use name — callsigns were never unique.")
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"An organisation that operates satellites."
+type Operator implements Node & Timestamped {
+  id: ID!
+  "Trading name."
+  name: String!
+  "ISO 3166-1 alpha-2 country code, for example `US`."
+  country: String
+  "Their public site."
+  website: URL
+  "Everything this operator flies, newest first."
+  fleet(
+    first: Int = 20
+    after: String
+    "Only satellites in this state."
+    status: SatelliteStatus
+  ): SatelliteConnection!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"A dish or antenna on the ground."
+type GroundStation implements Node {
+  id: ID!
+  name: String!
+  "Degrees north of the equator."
+  latitude: Float!
+  "Degrees east of Greenwich."
+  longitude: Float!
+  "Metres above sea level."
+  elevationM: Float
+  "Bands this station can work."
+  bands: [Band!]!
+}
+
+"One overhead pass of a satellite across a ground station."
+type Pass {
+  "When the satellite rises above the horizon."
+  startsAt: DateTime!
+  "When it sets again."
+  endsAt: DateTime!
+  "Highest point of the pass, in degrees above the horizon."
+  maxElevation: Float!
+  "Which station this pass is for."
+  station: GroundStation!
+  "Which satellite is passing."
+  satellite: Satellite!
+}
+
+"Where a page of results starts and stops."
+type PageInfo {
+  "Whether asking again with `after: endCursor` would return more."
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  "Pass this back as `after` to get the next page."
+  endCursor: String
+  startCursor: String
+}
+
+"One satellite, with its position in the list."
+type SatelliteEdge {
+  "Opaque. Pass it back as `after`; do not try to read it."
+  cursor: String!
+  node: Satellite!
+}
+
+"A page of satellites."
+type SatelliteConnection {
+  edges: [SatelliteEdge!]!
+  "The satellites themselves, when the cursors are not interesting."
+  nodes: [Satellite!]!
+  pageInfo: PageInfo!
+  "How many satellites match, across every page."
+  totalCount: Int!
+}
+
+"Anything a search can turn up."
+union SearchResult = Satellite | Operator | GroundStation
+
+# ---------------------------------------------------------------------------
+# Inputs
+# ---------------------------------------------------------------------------
+
+"How to sort a list of satellites."
+input SatelliteOrder {
+  field: SatelliteOrderField! = NAME
+  direction: SortDirection! = ASC
+}
+
+"Everything needed to register a satellite."
+input RegisterSatelliteInput {
+  "The name to register it under."
+  name: String!
+  "Who will fly it."
+  operatorId: ID!
+  "Planned mean altitude, in kilometres."
+  altitudeKm: Float
+  "Planned inclination, in degrees."
+  inclinationDeg: Float
+  "Bands it will use."
+  bands: [Band!] = []
+  "Where it is in its life. A new registration is usually PLANNED."
+  status: SatelliteStatus = PLANNED
+}
+
+"Fields to change on an existing satellite. Anything omitted is left alone."
+input UpdateSatelliteInput {
+  name: String
+  altitudeKm: Float
+  status: SatelliteStatus
+  bands: [Band!]
+}
+
+# ---------------------------------------------------------------------------
+# Payloads
+# ---------------------------------------------------------------------------
+
+"""
+Something that went wrong with a mutation, described well enough to show a
+user. Errors that are the caller's fault come back here rather than in the
+top-level `errors` array.
+"""
+type UserError {
+  "Which input field caused it, for example `[\"input\", \"name\"]`."
+  path: [String!]!
+  "Plain-language description of the problem."
+  message: String!
+}
+
+"What registering a satellite returns."
+type RegisterSatellitePayload {
+  "The new satellite. Null if `problems` is not empty."
+  satellite: Satellite
+  "Empty when it worked."
+  problems: [UserError!]!
+}
+
+"What updating a satellite returns."
+type UpdateSatellitePayload {
+  satellite: Satellite
+  problems: [UserError!]!
+}
+
+# ---------------------------------------------------------------------------
+# Roots
+# ---------------------------------------------------------------------------
+
+type Query {
+  "One satellite by id."
+  satellite(id: ID!): Satellite
+  """
+  A page of satellites, newest first by default.
+
+  Paginate by passing the previous page's `pageInfo.endCursor` as `after`.
+  """
+  satellites(
+    "How many to return. The server caps this at 100."
+    first: Int = 20
+    "A cursor from a previous page."
+    after: String
+    "Only satellites in this state."
+    status: SatelliteStatus
+    "How to sort them."
+    orderBy: SatelliteOrder = { field: NAME, direction: ASC }
+  ): SatelliteConnection!
+  "One operator by id."
+  operator(id: ID!): Operator
+  "Every ground station, optionally filtered by band."
+  groundStations(band: Band): [GroundStation!]!
+  """
+  Free-text search across satellites, operators and ground stations.
+
+  Because the results can be any of three types, select `__typename` and use
+  inline fragments for the fields you want.
+  """
+  search(
+    "What to look for."
+    term: String!
+    "How many results to return."
+    first: Int = 10
+  ): [SearchResult!]! @rateLimit(limit: 10, window: 60)
+  "Anything at all, by its global id."
+  node(id: ID!): Node
+  "Who the current API key belongs to."
+  viewer: Operator
+}
+
+type Mutation {
+  "Register a new satellite."
+  registerSatellite(input: RegisterSatelliteInput!): RegisterSatellitePayload!
+  "Change an existing satellite."
+  updateSatellite(id: ID!, input: UpdateSatelliteInput!): UpdateSatellitePayload!
+  """
+  Change a satellite's status and nothing else.
+
+  Kept because it is convenient, but `updateSatellite` can do the same thing.
+  """
+  setSatelliteStatus(id: ID!, status: SatelliteStatus!): Satellite
+  "Remove a satellite. This cannot be undone."
+  deleteSatellite(id: ID!): Boolean!
+}
+
+type Subscription {
+  "Fires whenever any satellite changes status."
+  satelliteStatusChanged(
+    "Only satellites flown by this operator."
+    operatorId: ID
+  ): Satellite!
+  "Fires as a pass begins over the given station."
+  passStarted(station: ID!): Pass!
+}
