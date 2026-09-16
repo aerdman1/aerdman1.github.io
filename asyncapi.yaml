@@ -2,7 +2,7 @@ asyncapi: 3.0.0
 id: urn:example:readme:test:asyncapi
 
 info:
-  title: AsyncAPI Test Spec (Kitchen Sink)
+  title: AsyncAPI Demo Spec
   version: 0.2.0
   description: |
     A deliberately broad AsyncAPI document used for testing tooling:
@@ -15,7 +15,7 @@ info:
     - Extensions (x-*) sprinkled throughout
 
   contact:
-    name: Kitchen Sink Support
+    name: API Support
     url: https://example.com/support
     email: support@example.com
 
@@ -30,7 +30,7 @@ externalDocs:
   url: https://example.com/docs
 
 tags:
-  - name: kitchen-sink
+  - name: demo
     description: Test spec used for validating renderers and tooling
   - name: experimental
     description: Intentionally includes edge cases and optional fields
@@ -50,10 +50,10 @@ servers:
       kafka:
         clientId:
           type: string
-          enum: [kitchen-sink-client]
+          enum: [demo-client]
         groupId:
           type: string
-          enum: [kitchen-sink-group]
+          enum: [demo-group]
     x-server-note: "Server extension field for testing"
 
   wsDev:
@@ -235,8 +235,8 @@ operations:
       - $ref: "#/components/operationTraits/kafkaDefaults"
     bindings:
       kafka:
-        clientId: kitchen-sink-producer
-        groupId: kitchen-sink-group
+        clientId: demo-producer
+        groupId: demo-group
     x-operation-note: "Operation extension field"
 
   consumeUserSignedUp:
@@ -254,7 +254,7 @@ operations:
       - $ref: "#/components/operationTraits/kafkaDefaults"
     bindings:
       kafka:
-        groupId: kitchen-sink-consumers
+        groupId: demo-consumers
     x-operation-note: "Another extension field"
 
   publishUserCommand:
@@ -271,7 +271,7 @@ operations:
       - $ref: "#/components/operationTraits/kafkaDefaults"
     bindings:
       kafka:
-        clientId: kitchen-sink-command-producer
+        clientId: demo-command-producer
 
   requestUserProfile:
     title: Request user profile (request/reply)
@@ -401,7 +401,7 @@ components:
     commonTags:
       tags:
         - name: test
-        - name: kitchen-sink
+        - name: demo
       x-trait-note: this is an extension field for testing
 
     kafkaDefaults:
