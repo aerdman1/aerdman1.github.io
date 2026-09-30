@@ -1,6 +1,6 @@
 {
- "title": "Wayfair API Playground",
- "description": "Try every Wayfair GraphQL API against recorded scenarios. Nothing is sent: pick a scenario to see the response it gets.",
+ "title": "Wayfair GraphQL APIs",
+ "description": "",
  "apis": [
   {
    "name": "CastleGate Inventory Adjustment API",
