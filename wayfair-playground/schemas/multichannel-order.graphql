@@ -1,0 +1,288 @@
+# Multichannel Order API (partial, inferred)
+# Inferred from the API Playground samples at https://developer.wayfair.io/integrations/api/playground
+# The reference docs page for this API would not load, so types are inferred from sample queries, variables and responses.
+# All fields are nullable and enum-like fields are String because the samples do not show nullability or allowed values.
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Verify against the live API before publishing.
+
+type Query {
+  """Retrieve detailed information about a specific multichannel fulfillment order."""
+  fulfillmentOrderDetails(orderDetailsInput: FulfillmentOrderDetailsInput!): FulfillmentOrderDetailsPayload
+  """Retrieve a paginated list of multichannel fulfillment orders for a supplier."""
+  fulfillmentOrderDetailsList(orderDetailsListInput: FulfillmentOrderDetailsListInput!): FulfillmentOrderDetailsListPayload
+  """Query warehouse shipping advice information for multichannel fulfillment orders."""
+  warehouseShippingAdvices(warehouseShippingAdviceInput: WarehouseShippingAdviceInput!): WarehouseShippingAdvicesPayload
+}
+
+type Mutation {
+  """Create a new multichannel fulfillment order with billing, shipping, and item details."""
+  createFulfillmentOrder(fulfillmentOrderInput: CreateFulfillmentOrderInput!): CreateFulfillmentOrderPayload
+  """Cancel an existing multichannel fulfillment order by aggregator order ID."""
+  cancelFulfillmentOrder(cancelFulfillmentOrderInput: CancelFulfillmentOrderInput!): CancelFulfillmentOrderPayload
+}
+
+type CancelFulfillmentOrderError {
+  errorCode: String
+  errorMessage: String
+  errorField: String
+  errorValue: String
+}
+
+type CancelFulfillmentOrderPayload {
+  aggregatorOrderId: String
+  errors: [CancelFulfillmentOrderError]
+  results: [CancelFulfillmentOrderResult]
+}
+
+type CancelFulfillmentOrderResult {
+  fulfillmentOrderItemId: String
+  supplierPartNumber: String
+  requestStatus: String
+  errors: [CancelFulfillmentOrderResultError]
+}
+
+type CancelFulfillmentOrderResultError {
+  errorCode: String
+  errorMessage: String
+  errorField: String
+  errorValue: String
+}
+
+type CreateFulfillmentOrderError {
+  code: String
+  message: String
+  field: String
+  value: String
+}
+
+type CreateFulfillmentOrderPayload {
+  fulfillmentOrderRequestId: String
+  requestStatus: String
+  errors: [CreateFulfillmentOrderError]
+}
+
+type FulfillmentOrder {
+  requestId: String
+  status: String
+  statusLabel: String
+  orderDate: String
+  customerOrderNumber: String
+  retailer: Retailer
+  shippingAddress: ShippingAddress
+  fulfillmentOrderItems: [FulfillmentOrderItem]
+}
+
+type FulfillmentOrderDetailsListNode {
+  fulfillmentOrder: FulfillmentOrder
+  fulfillmentOrderErrors: FulfillmentOrderError
+}
+
+type FulfillmentOrderDetailsListPayload {
+  pageInfo: PageInfo
+  nodes: [FulfillmentOrderDetailsListNode]
+}
+
+type FulfillmentOrderDetailsPayload {
+  fulfillmentOrder: FulfillmentOrder
+  fulfillmentOrderErrors: FulfillmentOrderError
+}
+
+type FulfillmentOrderError {
+  code: String
+  message: String
+  field: String
+  value: String
+}
+
+type FulfillmentOrderItem {
+  fulfillmentOrderItemId: String
+  productId: String
+  partNumber: String
+  supplierProductName: String
+  supplierPartNumber: String
+  status: String
+  statusLabel: String
+  failureReasons: [String]
+  quantityOrdered: Int
+  quantityShipped: Int
+  option: String
+  forcedQuantityMultiplier: Int
+  unitPrice: Float
+  trackingNumbers: [String]
+  errors: [FulfillmentOrderItemError]
+}
+
+type FulfillmentOrderItemError {
+  errorType: String
+  errorSource: String
+  errorCode: String
+  errorMessage: String
+}
+
+type PageInfo {
+  hasNextPage: Boolean
+  hasPreviousPage: Boolean
+  totalPages: Int
+  totalItems: Int
+}
+
+type ProductDetail {
+  fulfillmentOrderItemId: String
+  productId: String
+  partNumber: String
+  supplierProductName: String
+  supplierPartNumber: String
+  status: String
+  statusLabel: String
+  failureReasons: String
+  quantityOrdered: Int
+  quantityShipped: Int
+  option: String
+  forcedQuantityMultiplier: Int
+  unitPrice: Float
+  trackingNumbers: [String]
+  errors: ProductDetailError
+}
+
+type ProductDetailError {
+  errorType: String
+  errorSource: String
+  errorCode: String
+  errorMessage: String
+}
+
+type Retailer {
+  name: String
+  retailerId: String
+  orderNumber: String
+}
+
+type ShippingAddress {
+  name: String
+  address1: String
+  address2: String
+  city: String
+  stateShortName: String
+  postalCode: String
+  countryShortName: String
+  companyName: String
+}
+
+type ShippingDetail {
+  shippingAddress: ShippingAddress
+  shippingFromAddress: ShippingFromAddress
+  warehouse: Warehouse
+}
+
+type ShippingFromAddress {
+  name: String
+  address1: String
+  address2: String
+  city: String
+  stateShortName: String
+  postalCode: String
+  countryShortName: String
+  companyName: String
+}
+
+type Tracking {
+  carrier: String
+  carrierScac: String
+  expectedShippingDate: String
+  shippingDate: String
+  shipSpeed: String
+  shipSpeedCode: String
+  trackingNumbers: [String]
+}
+
+type Warehouse {
+  warehouseId: Int
+  name: String
+}
+
+type WarehouseShippingAdvicesNode {
+  fulfillmentOrderItemId: String
+  warehouseShippingAdviceDate: String
+  fulfillmentOrderRequestId: String
+  fulfillmentPurchaseOrderNumber: String
+  supplierId: Int
+  retailer: Retailer
+  productDetails: ProductDetail
+  shippingDetails: ShippingDetail
+  tracking: Tracking
+}
+
+type WarehouseShippingAdvicesPayload {
+  nodes: [WarehouseShippingAdvicesNode]
+  pageInfo: PageInfo
+}
+
+input BillingAddressInput {
+  name: String
+  address1: String
+  city: String
+  stateShortName: String
+  postalCode: String
+  countryShortName: String
+}
+
+input CancelFulfillmentOrderInput {
+  aggregatorOrderId: String
+  supplierId: String
+}
+
+input CreateFulfillmentOrderInput {
+  sellerFulfillmentOrderId: String
+  billingAddress: BillingAddressInput
+  customer: CustomerInput
+  items: [ItemInput]
+  retailer: RetailerInput
+  shippingAddress: ShippingAddressInput
+  shippingDetails: ShippingDetailInput
+  supplierId: Int
+  deliverySignatureRequired: Boolean
+}
+
+input CustomerInput {
+  orderNumber: String
+}
+
+input FulfillmentOrderDetailsInput {
+  supplierId: Int
+  fulfillmentOrderRequestId: String
+}
+
+input FulfillmentOrderDetailsListInput {
+  supplierId: Int
+}
+
+input ItemInput {
+  supplierPartNumber: String
+  quantity: Int
+}
+
+input RetailerInput {
+  retailerId: Int
+  orderNumber: String
+}
+
+input ShippingAddressInput {
+  name: String
+  address1: String
+  city: String
+  stateShortName: String
+  postalCode: String
+  countryShortName: String
+  phoneNumber: String
+}
+
+input ShippingDetailInput {
+  shippingAccountNumber: String
+  shipSpeedCode: String
+}
+
+input WarehouseShippingAdviceInput {
+  fulfillmentOrderItemIds: [String]
+  supplierId: Int
+}
+

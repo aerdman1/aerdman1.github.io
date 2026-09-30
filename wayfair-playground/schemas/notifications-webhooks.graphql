@@ -1,0 +1,708 @@
+# Notifications
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/notifications/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/partners-api-webhooks
+# Not produced by introspection: verify against the live API before publishing.
+# Corrected 2026-09-30 against the API Playground's own operations (fix_schemas.py):
+#   scalar CreateSubscriptionError -> union of 5
+#   scalar DeleteSubscriptionError -> union of 3
+#   scalar DisableSubscriptionError -> union of 3
+#   scalar EnableSubscriptionError -> union of 3
+#   scalar SendWebhookSubscriptionTestEventError -> union of 4
+#   scalar UpdateSubscriptionError -> union of 6
+#   EventHttpDestination implements EventDestination
+#   FailedToPersistSubscriptionError implements SupplierStandardError
+#   FailedToSendTestEventError implements SupplierStandardError
+#   InvalidAuthenticationScopeError implements SupplierStandardError
+#   InvalidEventFilterError implements SupplierStandardError
+#   InvalidEventTypeError implements SupplierStandardError
+#   InvalidEventVersionError implements SupplierStandardError
+#   InvalidSubscriptionError implements SupplierStandardError
+
+type Query {
+  """Lists the catalog of events you can subscribe to. Each entry describes one version of an event type: its name, business domain, a description of when it is emitted, and the named test scenarios you can send with sendSubscriptionTestEvent to try out your endpoint before real events flow."""
+  availableEventDefinitions(
+    """Maximum number of event definitions to return in this page."""
+    first: Int
+    """Cursor of the last item of the previous page (pageInfo.endCursor); omit to start from the first page."""
+    after: String
+  ): EventDefinitionConnection!
+  """Retrieves the details of one of your webhook subscriptions: its destination URL, current status, the events it is subscribed to (with any filters), and the signing key used to sign deliveries."""
+  subscription(
+    """Unique identifier of the subscription, as returned by createSubscription."""
+    subscriptionId: ID!
+  ): Subscription
+  """Lists all webhook subscriptions belonging to your account, newest first. Use filter to narrow the list to subscriptions in a given status or subscribed to particular event types, and first/after to page through large result sets."""
+  subscriptions(
+    """Maximum number of subscriptions to return in this page."""
+    first: Int
+    """Cursor of the last item of the previous page (pageInfo.endCursor); omit to start from the first page."""
+    after: String
+    """Optional criteria to narrow the list by subscription status and/or event type."""
+    filter: EventSubscriptionFilterInput
+  ): SubscriptionConnection!
+}
+
+type Mutation {
+  """Creates a new webhook subscription. You choose the HTTPS endpoint that should receive notifications, one or more event types to be notified about (each with an optional filter), and optionally a delivery rate limit."""
+  createSubscription(
+    """Destination, events and delivery settings of the new subscription."""
+    input: CreateSubscriptionInput!
+  ): CreateSubscriptionPayload!
+  """Permanently removes a subscription. Deliveries stop immediately and the subscription can no longer be retrieved. This cannot be undone: to receive notifications again, create a new subscription (which will have a new signing key). To stop deliveries temporarily, use disableSubscription instead."""
+  deleteSubscription(
+    """The subscription to remove."""
+    input: DeleteSubscriptionInput!
+  ): DeleteSubscriptionPayload!
+  """Temporarily stops deliveries for a subscription, for example while your endpoint is under maintenance. The subscription and its settings are kept, and its status becomes DISABLED_BY_SUPPLIER. Call enableSubscription to resume deliveries."""
+  disableSubscription(
+    """The subscription to pause."""
+    input: DisableSubscriptionInput!
+  ): DisableSubscriptionPayload!
+  """Resumes deliveries for a subscription that you previously disabled. The subscription returns to the ACTIVE status and new events start being delivered again."""
+  enableSubscription(
+    """The subscription to re-enable."""
+    input: EnableSubscriptionInput!
+  ): EnableSubscriptionPayload!
+  """Sends a sample notification to the subscription's endpoint so you can verify that your integration receives, authenticates and processes events correctly before real events occur. The sample has the same structure as a real event of the chosen type and is signed with the subscription's signing key."""
+  sendSubscriptionTestEvent(
+    """The subscription to test and the event type (and optional scenario) to send."""
+    input: SendSubscriptionTestEventInput!
+  ): SendSubscriptionTestEventPayload!
+  """Changes which events a subscription is notified about. The list you provide becomes the complete set of subscribed events: events you omit are removed and events you add start being delivered. Use this to subscribe to a new event type, stop receiving one, or move to a different event version."""
+  updateSubscriptionEvents(
+    """The subscription to change and its complete new list of events."""
+    input: UpdateSubscriptionEventsInput!
+  ): UpdateSubscriptionEventsPayload!
+  """Changes the filters applied to events a subscription is already subscribed to, without changing which events it receives. A filter lets you receive only the events that match a condition (for example, only orders for a given warehouse). Leave filter empty to remove the filter from an event."""
+  updateSubscriptionFilters(
+    """The subscription to change and the events whose filters should be replaced."""
+    input: UpdateSubscriptionFiltersInput!
+  ): UpdateSubscriptionFiltersPayload!
+  """Changes the maximum number of notifications per second that will be delivered to the subscription's endpoint. Lower the limit if your endpoint cannot handle bursts of deliveries."""
+  updateSubscriptionRateLimit(
+    """The subscription to change and its new deliveries-per-second limit."""
+    input: UpdateSubscriptionRateLimitInput!
+  ): UpdateSubscriptionRateLimitPayload!
+}
+
+"""Reasons createSubscription can fail."""
+union CreateSubscriptionError = InvalidSubscriptionError | InvalidEventVersionError | InvalidEventFilterError | InvalidAuthenticationScopeError | FailedToPersistSubscriptionError
+"""Settings of a new subscription."""
+input CreateSubscriptionInput {
+  """The endpoint that should receive notifications."""
+  destination: EventDestinationInput!
+  """Optional free-text label to help you tell your subscriptions apart."""
+  description: String
+  """The events to be notified about. At least one is required; each may carry its own filter."""
+  events: [SubscriptionEventInput!]!
+  """Maximum number of notifications delivered per second. When omitted, the platform default applies."""
+  rateLimit: Int
+}
+
+"""Result of createSubscription."""
+type CreateSubscriptionPayload {
+  """The newly created subscription; null when the request failed."""
+  subscription: Subscription
+  """The secret used to verify delivery signatures. Store it now: it is never shown again. null when the request failed."""
+  signingKeySecret: String
+  """Details of the signing key the secret belongs to; null when the request failed."""
+  signingKey: SigningKey
+  """Empty on success; otherwise, the reasons the subscription could not be created."""
+  errors: [CreateSubscriptionError!]!
+}
+
+"""ISO-8601 / RFC-3339 timestamp, e.g. 2026-07-21T07:40:00Z."""
+scalar DateTime
+
+"""Reasons deleteSubscription can fail."""
+union DeleteSubscriptionError = InvalidSubscriptionError | InvalidAuthenticationScopeError | FailedToPersistSubscriptionError
+"""The subscription to remove."""
+input DeleteSubscriptionInput {
+  """Identifier of the subscription to remove permanently."""
+  subscriptionId: ID!
+}
+
+"""Result of deleteSubscription."""
+type DeleteSubscriptionPayload {
+  """true when the subscription was removed; false when the request failed (including when it did not exist)."""
+  isSuccess: Boolean!
+  """Empty on success; otherwise, the reasons the subscription could not be removed."""
+  errors: [DeleteSubscriptionError!]!
+}
+
+"""Credentials your endpoint requires. Provide exactly one of the fields."""
+input DestinationAuthenticationInput {
+  """HTTP basic authentication (username and password)."""
+  basicAuthentication: EventDestinationBasicAuthenticationInput
+  """OAuth 2.0 client credentials."""
+  oauth2: EventDestinationOauth2AuthenticationInput
+  """A fixed HTTP header sent with every delivery."""
+  header: EventDestinationHeaderAuthenticationInput
+}
+
+"""Reasons disableSubscription can fail."""
+union DisableSubscriptionError = InvalidSubscriptionError | InvalidAuthenticationScopeError | FailedToPersistSubscriptionError
+"""The subscription to pause."""
+input DisableSubscriptionInput {
+  """Identifier of the subscription to pause."""
+  subscriptionId: ID!
+}
+
+"""Result of disableSubscription. Retrieve the subscription to see its new status."""
+type DisableSubscriptionPayload {
+  """true when deliveries were paused; false when the request failed."""
+  isSuccess: Boolean!
+  """Empty on success; otherwise, the reasons the subscription could not be disabled."""
+  errors: [DisableSubscriptionError!]!
+}
+
+"""Reasons enableSubscription can fail."""
+union EnableSubscriptionError = InvalidSubscriptionError | InvalidAuthenticationScopeError | FailedToPersistSubscriptionError
+"""The subscription to re-enable."""
+input EnableSubscriptionInput {
+  """Identifier of the subscription to re-enable."""
+  subscriptionId: ID!
+}
+
+"""Result of enableSubscription. Retrieve the subscription to see its new status."""
+type EnableSubscriptionPayload {
+  """true when deliveries were resumed; false when the request failed."""
+  isSuccess: Boolean!
+  """Empty on success; otherwise, the reasons the subscription could not be enabled."""
+  errors: [EnableSubscriptionError!]!
+}
+
+"""Broad category of an error."""
+enum ErrorClass {
+  """The request is invalid; correct it and try again."""
+  VALIDATION
+  """The request carried no valid access token."""
+  UNAUTHENTICATED
+  """Your access token does not allow this operation."""
+  FORBIDDEN
+  """The subscription or event referred to does not exist in your account."""
+  NOT_FOUND
+  """The request conflicts with the current state, e.g. a limit was reached."""
+  CONFLICT
+  """Too many requests in a short time; wait and try again."""
+  RATE_LIMITED
+  """A temporary problem on Wayfair's side; try again later."""
+  INTERNAL
+}
+
+"""Stable code identifying the kind of failure. Codes marked not used are reserved and never returned by this API today."""
+enum ErrorCode {
+  """Reserved, not used: malformed request documents are reported as described under Error handling."""
+  GRAPHQL_PARSE_FAILED
+  """Reserved, not used: request documents that do not match the schema are reported as described under Error handling."""
+  GRAPHQL_VALIDATION_FAILED
+  """An input value is invalid; message and path say which."""
+  BAD_USER_INPUT
+  """Reserved, not used."""
+  DATA_AVAILABILITY_WINDOW
+  """Reserved, not used."""
+  FILTER_CARDINALITY_EXCEEDED
+  """The operation is published but not yet available."""
+  GRAPHQL_OPERATION_NOT_SUPPORTED
+  """Reserved, not used."""
+  UNSUPPORTED_MEDIA_TYPE
+  """Reserved, not used."""
+  REQUEST_TOO_LARGE
+  """No valid access token was provided."""
+  UNAUTHENTICATED
+  """Your access token does not grant the permission required by the operation."""
+  FORBIDDEN
+  """Your access token lacks the scope required by the operation."""
+  FORBIDDEN_SCOPE
+  """Reserved, not used."""
+  ACCOUNT_INACTIVE
+  """Too many requests; wait and try again."""
+  RATE_LIMITED
+  """Reserved, not used."""
+  RESOURCE_LOCKED
+  """The subscription does not exist in your account."""
+  NOT_FOUND
+  """The event catalog cannot describe the event right now; try again shortly."""
+  NOT_FOUND_NOT_READY
+  """The request conflicts with your existing subscriptions, e.g. the maximum number of subscriptions was reached."""
+  CONFLICT
+  """Reserved, not used."""
+  CONFLICT_VERSION
+  """Reserved, not used."""
+  IDEMPOTENCY_KEY_REUSED
+  """Reserved, not used."""
+  DEPRECATED
+  """An unexpected problem occurred; try again and quote requestId to support if it persists."""
+  INTERNAL
+  """A dependency did not answer in time; try again."""
+  INTERNAL_TIMEOUT
+  """A dependency is temporarily unavailable; try again later."""
+  SERVICE_UNAVAILABLE
+}
+
+"""One version of an event type you can subscribe to."""
+type EventDefinition {
+  """Full name of the event type, made of its domain and type, e.g. reporting.report-executed."""
+  name: String!
+  """What the event means and when it is emitted."""
+  description: String!
+  """Business domain the event belongs to, e.g. reporting."""
+  domain: String!
+  """Type of the event within its domain, e.g. report-executed."""
+  type: String!
+  """Version of the event type. Different versions may carry a different payload structure."""
+  version: String!
+  """Names of the sample scenarios available for sendSubscriptionTestEvent, in the order they are published. When empty, a generic sample matching the event's structure is sent instead."""
+  testEventScenarios: [String]
+}
+
+"""One page of the event catalog."""
+type EventDefinitionConnection {
+  """The event definitions in this page."""
+  edges: [EventDefinitionEdge!]!
+  """Whether more pages exist and the cursors to request them."""
+  pageInfo: PageInfo!
+}
+
+"""One event definition in a page, with the cursor that identifies its position."""
+type EventDefinitionEdge {
+  """The event definition."""
+  node: EventDefinition!
+  """Position of this item; pass it as after to fetch the items following it."""
+  cursor: String!
+}
+
+"""The endpoint notifications are delivered to. Currently, HTTPS endpoints are supported."""
+interface EventDestination {
+  """Maximum number of notifications delivered to this endpoint per second."""
+  rateLimit: Int
+}
+
+"""Username and password for HTTP basic authentication."""
+input EventDestinationBasicAuthenticationInput {
+  """Username."""
+  username: String!
+  """Password."""
+  password: String!
+}
+
+"""A fixed HTTP header sent with every delivery, e.g. an API key."""
+input EventDestinationHeaderAuthenticationInput {
+  """Name of the header, e.g. X-Api-Key."""
+  authHeaderName: String!
+  """Value of the header."""
+  authHeaderValue: String!
+}
+
+"""The endpoint notifications are delivered to. Provide exactly one of the fields."""
+input EventDestinationInput {
+  """An HTTPS endpoint that receives notifications as HTTP POST requests."""
+  httpEndpoint: EventHttpDestinationInput
+}
+
+"""OAuth 2.0 client credentials used to obtain an access token before each delivery."""
+input EventDestinationOauth2AuthenticationInput {
+  """URL of the token endpoint."""
+  authUrl: String!
+  """Client id."""
+  clientId: String!
+  """Client secret."""
+  clientSecret: String!
+}
+
+"""An HTTPS endpoint that receives notifications as signed HTTP POST requests."""
+type EventHttpDestination implements EventDestination {
+  """Full HTTPS URL notifications are posted to."""
+  url: String!
+  """Maximum number of notifications delivered to this endpoint per second."""
+  rateLimit: Int
+}
+
+"""An HTTPS endpoint that receives notifications."""
+input EventHttpDestinationInput {
+  """Full HTTPS URL notifications should be posted to."""
+  url: String!
+  """Optional credentials your endpoint requires on each delivery. Accepted but not yet applied to deliveries."""
+  destinationAuthentication: DestinationAuthenticationInput
+}
+
+"""Criteria to narrow the list of subscriptions. All criteria given must match."""
+input EventSubscriptionFilterInput {
+  """Only subscriptions in this status."""
+  status: SubscriptionStatusInput
+  """Only subscriptions subscribed to at least one of these event types."""
+  eventType: [EventTypeFilterInput!]
+}
+
+"""An event type to match subscriptions on."""
+input EventTypeFilterInput {
+  """Full name of the event type as listed by availableEventDefinitions, e.g. reporting.report-executed."""
+  eventType: String!
+  """Optional version of the event type; omit to match any version."""
+  versionId: String
+}
+
+"""The change could not be saved. Either it conflicts with your existing subscriptions (code CONFLICT, e.g. the maximum number of subscriptions was reached), the operation is not yet available (code GRAPHQL_OPERATION_NOT_SUPPORTED), or a temporary problem occurred (codes INTERNAL, INTERNAL_TIMEOUT, SERVICE_UNAVAILABLE, RATE_LIMITED; retryable)."""
+type FailedToPersistSubscriptionError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+}
+
+"""The sample event could not be sent to your endpoint. retryable tells whether sending it again may succeed (codes INTERNAL, INTERNAL_TIMEOUT, SERVICE_UNAVAILABLE, RATE_LIMITED)."""
+type FailedToSendTestEventError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+}
+
+"""Your access token does not grant the permission this operation requires (code FORBIDDEN_SCOPE)."""
+type InvalidAuthenticationScopeError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+}
+
+"""A filter expression could not be understood or refers to a field the event does not have (code BAD_USER_INPUT). Correct the expression and try again."""
+type InvalidEventFilterError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+  """The field of the filter expression that is invalid, when it can be identified."""
+  field: String
+}
+
+"""The named event cannot be used with this subscription: either the subscription is not subscribed to it (code BAD_USER_INPUT), or the event catalog is temporarily unable to describe it (code NOT_FOUND_NOT_READY, retryable)."""
+type InvalidEventTypeError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+  """Full name of the event type concerned, e.g. reporting.report-executed."""
+  eventType: String!
+}
+
+"""The requested event type and version is not available for subscription (code BAD_USER_INPUT). Check availableEventDefinitions for the versions you can subscribe to."""
+type InvalidEventVersionError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+  """Full name of the event type concerned, e.g. reporting.report-executed."""
+  eventType: String!
+  """The version that was requested, when one was given."""
+  requestedVersion: String
+}
+
+"""The request could not be applied to a subscription: the subscription does not exist in your account (code NOT_FOUND), or the request itself is invalid (code BAD_USER_INPUT, e.g. no events given, or a filter update naming an event the subscription is not subscribed to)."""
+type InvalidSubscriptionError implements SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+}
+
+"""Paging information for a list result."""
+type PageInfo {
+  """true when more items follow this page."""
+  hasNextPage: Boolean!
+  """true when items precede this page."""
+  hasPreviousPage: Boolean!
+  """Cursor of the first item in this page."""
+  startCursor: String
+  """Cursor of the last item in this page; pass it as after to fetch the next page."""
+  endCursor: String
+}
+
+"""The subscription to test and the sample event to send."""
+input SendSubscriptionTestEventInput {
+  """Identifier of the subscription whose endpoint should receive the sample."""
+  subscriptionId: ID!
+  """Which of the subscription's events to send a sample of."""
+  eventType: SubscriptionTestEventInput!
+}
+
+"""Result of sendSubscriptionTestEvent."""
+type SendSubscriptionTestEventPayload {
+  """Identifier of the sample event sent to your endpoint; null when the request failed."""
+  eventId: String
+  """Empty on success; otherwise, the reasons the sample could not be sent."""
+  errors: [SendWebhookSubscriptionTestEventError!]!
+}
+
+"""Reasons sendSubscriptionTestEvent can fail."""
+union SendWebhookSubscriptionTestEventError = InvalidSubscriptionError | InvalidEventTypeError | InvalidAuthenticationScopeError | FailedToSendTestEventError
+"""The key used to sign every notification delivered to your endpoint, so you can verify that a delivery genuinely comes from Wayfair. The secret value itself is returned exactly once: by createSubscription when the subscription is created, and by rotateSubscriptionSigningKey when the key is rotated."""
+type SigningKey {
+  """Identifier of the key."""
+  keyId: String!
+  """Fixed prefix every secret starts with (whsec_), so you can recognise a signing secret."""
+  prefix: String!
+  """Algorithm used to compute delivery signatures, e.g. HMAC_SHA256."""
+  algorithm: String!
+  """When the key was created."""
+  createdAt: DateTime!
+  """When the key stops being accepted. null for the current key; set on the previous key after a rotation."""
+  expiresAt: DateTime
+  """After a rotation, the key being retired, for as long as it is still accepted."""
+  previousKey: SigningKey
+}
+
+"""An event a subscription is notified about, together with the filter applied to it."""
+type SubscribedEvent {
+  """The event type and version the subscription receives."""
+  eventDefinition: EventDefinition!
+  """The filter condition applied to this event; null when every event of this type is delivered."""
+  appliedFilter: String
+}
+
+"""A webhook subscription: where notifications are delivered, which events trigger them, and how deliveries are signed."""
+type Subscription {
+  """Unique identifier of the subscription. Use it in every operation that acts on this subscription."""
+  subscriptionId: ID!
+  """The supplier account that owns the subscription."""
+  supplier: Supplier!
+  """The vendor the subscription is associated with, when applicable."""
+  vendor: Vendor
+  """The endpoint that receives notifications and its delivery settings."""
+  destination: EventDestination!
+  """Free-text label you gave the subscription, to tell your subscriptions apart."""
+  description: String
+  """When the subscription was created."""
+  createdAt: DateTime!
+  """When the subscription was last changed."""
+  updatedAt: DateTime!
+  """Whether the subscription is currently delivering notifications, and if not, why."""
+  status: SubscriptionStatus!
+  """The events this subscription is notified about. Each event may carry its own filter."""
+  subscribedEvents: SubscriptionEventConnection!
+  first: Int
+  """Details of the key used to sign deliveries. The secret itself is only returned when the key is created."""
+  signingKey: SigningKey!
+}
+
+"""One page of subscriptions."""
+type SubscriptionConnection {
+  """The subscriptions in this page."""
+  edges: [SubscriptionEdge!]!
+  """Whether more pages exist and the cursors to request them."""
+  pageInfo: PageInfo!
+}
+
+"""One subscription in a page, with the cursor that identifies its position."""
+type SubscriptionEdge {
+  """The subscription."""
+  node: Subscription!
+  """Position of this item; pass it as after to fetch the items following it."""
+  cursor: String!
+}
+
+"""One page of a subscription's subscribed events."""
+type SubscriptionEventConnection {
+  """The subscribed events in this page."""
+  edges: [SubscriptionEventDefinitionEdge!]!
+  """Whether more pages exist and the cursors to request them."""
+  pageInfo: PageInfo!
+}
+
+"""One subscribed event in a page, with the cursor that identifies its position."""
+type SubscriptionEventDefinitionEdge {
+  """The subscribed event."""
+  node: SubscribedEvent!
+  """Position of this item; pass it as after to fetch the items following it."""
+  cursor: String!
+}
+
+"""An event to subscribe to, with an optional filter."""
+input SubscriptionEventInput {
+  """Catalog type of the event as listed by availableEventDefinitions, e.g. report-executed. Send domain separately."""
+  eventType: String!
+  """Domain of the event type as listed by availableEventDefinitions, e.g. reporting."""
+  domain: String!
+  """Version of the event type to receive. When omitted, the current default version is used."""
+  version: String
+  """Optional condition restricting which events of this type are delivered, written as a CEL expression over the event's fields, e.g. status in ["SUCCESS", "FAILED"] && total > 100. Leave empty to receive every event of this type."""
+  filter: String
+}
+
+"""Permission your access token must carry to use an operation."""
+enum SubscriptionPermission {
+  """Allows reading subscriptions and the event catalog (all queries)."""
+  READ_SUBSCRIPTION
+  """Allows creating and changing subscriptions (all mutations)."""
+  WRITE_SUBSCRIPTION
+}
+
+"""Delivery status of a subscription."""
+enum SubscriptionStatus {
+  """Notifications are being delivered."""
+  ACTIVE
+  """You paused the subscription with disableSubscription; call enableSubscription to resume."""
+  DISABLED_BY_SUPPLIER
+  """Wayfair disabled the subscription for policy reasons; contact support."""
+  DISABLED_BY_WAYFAIR_POLICY
+  """Wayfair paused deliveries because the endpoint kept failing; deliveries resume once the endpoint is healthy."""
+  PAUSED_BY_WAYFAIR_FAILURE
+}
+
+"""Subscription status to filter on."""
+enum SubscriptionStatusInput {
+  """Notifications are being delivered."""
+  ACTIVE
+  """Paused by you with disableSubscription."""
+  DISABLED_BY_SUPPLIER
+  """Disabled by Wayfair for policy reasons."""
+  DISABLED_BY_WAYFAIR_POLICY
+  """Paused by Wayfair because the endpoint kept failing."""
+  PAUSED_BY_WAYFAIR_FAILURE
+}
+
+"""Identifies one of the events a subscription is already subscribed to, and which sample of it to send."""
+input SubscriptionTestEventInput {
+  """Catalog type of the event as listed by availableEventDefinitions, e.g. report-executed. Send domain separately."""
+  eventType: String!
+  """Domain of the event type as listed by availableEventDefinitions, e.g. reporting."""
+  domain: String!
+  """Version of the event to test, if the subscription is subscribed to more than one version of this event type. When omitted, the highest subscribed version is used."""
+  version: String
+  """Name of the sample scenario to send, from the event's testEventScenarios. When omitted, the first scenario is sent."""
+  scenarioName: String
+}
+
+"""The supplier account a subscription belongs to."""
+type Supplier {
+  """Wayfair supplier identifier."""
+  supplierId: String!
+}
+
+"""Information every error carries. Each error type below adds fields specific to its cause."""
+interface SupplierStandardError {
+  """Human-readable explanation of what went wrong."""
+  message: String!
+  """Stable code identifying the kind of failure; see Error handling for the list of codes."""
+  code: ErrorCode!
+  """Broad category of the failure."""
+  classification: ErrorClass!
+  """Path to the input field the error relates to (e.g. ["input", "events"]), when it relates to one."""
+  path: [String!]
+  """true when sending the same request again may succeed (e.g. after a temporary outage); false when it must be changed first."""
+  retryable: Boolean!
+  """Identifier of your request. Quote it when contacting Wayfair support."""
+  requestId: String
+}
+
+"""Reasons an update to a subscription can fail."""
+union UpdateSubscriptionError = InvalidSubscriptionError | InvalidEventTypeError | InvalidEventVersionError | InvalidEventFilterError | InvalidAuthenticationScopeError | FailedToPersistSubscriptionError
+"""The subscription to change and its complete new list of events."""
+input UpdateSubscriptionEventsInput {
+  """Identifier of the subscription to change."""
+  subscriptionId: ID!
+  """The complete list of events the subscription should receive from now on; events not listed are removed."""
+  events: [SubscriptionEventInput!]!
+}
+
+"""Result of updateSubscriptionEvents."""
+type UpdateSubscriptionEventsPayload {
+  """The subscription after the change; null when the request failed."""
+  subscription: Subscription
+  """Empty on success; otherwise, the reasons the change was rejected."""
+  errors: [UpdateSubscriptionError!]!
+}
+
+"""The subscription to change and the filters to apply."""
+input UpdateSubscriptionFiltersInput {
+  """Identifier of the subscription to change."""
+  subscriptionId: ID!
+  """The events whose filters should be replaced. Each entry must name an event the subscription is already subscribed to; the filter of events not listed here is left unchanged. Omit filter (or pass an empty string) to remove the filter from an event. To subscribe to new events, use updateSubscriptionEvents."""
+  events: [SubscriptionEventInput!]!
+}
+
+"""Result of updateSubscriptionFilters."""
+type UpdateSubscriptionFiltersPayload {
+  """The subscription after the change; null when the request failed."""
+  subscription: Subscription
+  """Empty on success; otherwise, the reasons the change was rejected."""
+  errors: [UpdateSubscriptionError!]!
+}
+
+"""The subscription to change and its new delivery limit."""
+input UpdateSubscriptionRateLimitInput {
+  """Identifier of the subscription to change."""
+  subscriptionId: ID!
+  """New maximum number of notifications delivered per second."""
+  rateLimit: Int!
+}
+
+"""Result of updateSubscriptionRateLimit."""
+type UpdateSubscriptionRateLimitPayload {
+  """The subscription after the change; null when the request failed."""
+  subscription: Subscription
+  """Empty on success; otherwise, the reasons the change was rejected."""
+  errors: [UpdateSubscriptionError!]!
+}
+
+"""The vendor a subscription is associated with."""
+type Vendor {
+  """Wayfair vendor identifier."""
+  vendorId: String!
+}

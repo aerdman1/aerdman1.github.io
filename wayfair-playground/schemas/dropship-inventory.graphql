@@ -1,0 +1,102 @@
+# Dropship Inventory API
+# Written from the hub's own GraphQL Specification page (docs/api-documentation/dropship-apis/dropship-inventory)
+# and the API Playground's SaveInventory operation, 2026-09-30.
+# Endpoint: https://api.wayfair.com/v1/graphql
+# Where the two disagree the working playground query wins: it selects `id` and `completedCount`,
+# which the page's TransactionStatus listing omits, and passes `[inventoryInput]!`.
+# The page documents no queries, so this file has no Query type rather than an invented one.
+# Not produced by introspection: verify against the live API before publishing.
+
+type Mutation {
+  """Inventory mutations."""
+  inventory: InventoryMutations
+}
+
+"""Inventory mutations, reached as `mutation { inventory { … } }`."""
+type InventoryMutations {
+  """Saves the inventory for all the parts provided in the arguments."""
+  save(
+    """A list of products to add to inventory."""
+    inventory: [inventoryInput]!
+    """Whether this is a differential or true-up inventory feed. Default: DIFFERENTIAL. Sandbox supports TRUE_UP only."""
+    feedKind: inventoryFeedKind = DIFFERENTIAL
+    """Performs a dry run of this operation if true."""
+    dryRun: Boolean = false
+  ): TransactionStatus!
+}
+
+"""Whether a feed lists changed products only, or every product."""
+enum inventoryFeedKind {
+  """A differential listing of inventory."""
+  DIFFERENTIAL
+  """A complete listing of inventory for all listed products."""
+  TRUE_UP
+}
+
+"""The state of a transaction."""
+enum TransactionState {
+  """A new item. Processing has not yet begun."""
+  NEW
+  """We are currently processing the item."""
+  PROCESSING
+  """An error occurred during processing."""
+  ERROR
+  """Processing completed without errors."""
+  COMPLETE
+}
+
+"""Inventory information for one product."""
+input inventoryInput {
+  """The id of the supplier/warehouse that has this product."""
+  supplierId: Int!
+  """The part number of the product."""
+  supplierPartNumber: String!
+  """The number of units on hand and still available for sale."""
+  quantityOnHand: Int!
+  """The number of backordered units."""
+  quantityBackordered: Int
+  """The number of units allocated to open orders."""
+  quantityOnOrder: Int
+  """The next time this product will be available. Format: ISO 8601 or "MM-DD-YYYY HH:MM:SS" in UTC."""
+  itemNextAvailabilityDate: String
+  """The name of the product along with any options to be submitted for it."""
+  productNameAndOptions: String
+  """Whether or not the product has been discontinued."""
+  discontinued: Boolean = false
+}
+
+"""The status of an inventory transaction."""
+type TransactionStatus {
+  """The id of this transaction."""
+  id: ID
+  """The identifier for this transaction."""
+  handle: String
+  """The status of this transaction."""
+  status: TransactionState
+  """The date and time this transaction was submitted."""
+  submittedAt: String!
+  """The date and time this transaction was completed."""
+  completedAt: String
+  """The current count of transaction items for this transaction."""
+  itemCount: Int
+  """The current count of errored transaction items for this transaction."""
+  errorCount: Int
+  """Items with errors that occurred during this transaction."""
+  errors(offset: Int, limit: Int): [ItemStatus]
+  """The current count of completed transaction items for this transaction."""
+  completedCount: Int
+  """Items completed during the transaction."""
+  completed(offset: Int, limit: Int): [ItemStatus]
+  """The current count of processing transaction items for this transaction."""
+  processingCount: Int
+  """Items currently being processed during the transaction."""
+  processing(offset: Int, limit: Int): [ItemStatus]
+}
+
+"""The status of one item in a transaction."""
+type ItemStatus {
+  """The identifier of this item."""
+  key: String
+  """A message describing the status of the item."""
+  message: String
+}

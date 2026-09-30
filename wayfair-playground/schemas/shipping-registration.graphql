@@ -1,0 +1,1009 @@
+# Registration & Shipping API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/shipping-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.com/v1/graphql
+# Not produced by introspection: verify against the live API before publishing.
+# Corrected 2026-09-30 against the API Playground's own operations (fix_schemas.py):
+#   Mutation.purchaseOrders -> PurchaseOrderMutations { register }
+
+type Query {
+  """Load label generation events that occurred through the API. Returns data associated with previously committed registrations (calls to the Register Mutation). The query can be used to retrieve the appropriate shipping document endpoint URLs, as well as the submitted pick-up date for the shipment and all the information for the related purchase order. After retrieving shipping label it also contains information about generated shipping labels"""
+  labelGenerationEvents(
+    """A list of filters to apply."""
+    filters: [LabelGenerationEventFilterInput] = []
+    """A list of orderings to order the result set by. The first item in the list has the highest priority and the last has the least."""
+    ordering: [orderingInput] = []
+    """The maximum number of results to return. If a limit is set and the result set contains more items than the limit, then a subset of the results with a count equal to limit will be returned. If no limit is set, the default is 10."""
+    limit: Int = 10
+    """The index of the result set to start at. If an offset is set all items at an index before the offset will be eliminated from the results."""
+    offset: Int = 0
+  ): [LabelGenerationEvent!]!
+}
+
+type Mutation {
+  """Purchase order registration mutations."""
+  purchaseOrders: PurchaseOrderMutations
+}
+
+"""Purchase order registration mutations. Reached as `mutation { purchaseOrders { … } }`."""
+type PurchaseOrderMutations {
+  """Register purchase order items for shipment."""
+  register(
+    """The input containing information necessary for registering items to ship"""
+    registrationInput: RegistrationInput!
+  ): LabelGenerationEvent!
+}
+
+"""An address"""
+type Address {
+  """The name of a person for this address"""
+  name: String
+  """The street address"""
+  address1: String
+  """The secondary street address field"""
+  address2: String
+  """The tertiary street address field"""
+  address3: String
+  """The city"""
+  city: String
+  """The state or province"""
+  state: String
+  """The country"""
+  country: String
+  """The postal code"""
+  postalCode: String
+  """The phone number to reach the address"""
+  phoneNumber: String
+}
+
+"""A transportation agent"""
+type Agent {
+  """The identifier for this agent"""
+  id: ID!
+  """The name of the agent"""
+  name: String
+}
+
+"""BJS Shipping Label Information"""
+type BJSShippingLabelInfo {
+  """Carrier for this shipping label"""
+  carrier: String!
+  """Carrier code for this shipping label"""
+  carrierCode: String!
+  """Tracking number for this shipping label"""
+  trackingNumber: String!
+  """Total Weight"""
+  weight: Weight!
+  """Bar code number for the label"""
+  barcodeNumber: String!
+  """Dimensions for the package"""
+  dimensions: PackageDimensionType!
+  """Service level for BJS Label. Ex One man, Two man etc"""
+  serviceLevel: String!
+  """Depot Code"""
+  depotCode: String!
+}
+
+"""Information about a specific Bill of Lading"""
+type BillOfLading {
+  """A URL for downloading this Bill of Lading"""
+  url: URL!
+}
+
+"""Billing information"""
+type BillingInfo {
+  """The VAT number"""
+  vatNumber: String
+}
+
+"""An input representing a product part that is packaged for shipping"""
+input ContainedPart {
+  """The ordered product's identifier"""
+  partNumber: NonEmptyString!
+  """A group consists of all the parts that compose a single instance of a product. This identifier is used to distinguish parts belonging to different instances of a product"""
+  groupIdentifier: PositiveInt!
+}
+
+"""Types of currency"""
+enum Currency {
+  """US Dollar"""
+  US_DOLLAR
+  """British Pound"""
+  BRITISH_POUND
+  """Euro"""
+  EURO
+  """Canadian Dollar"""
+  CANADIAN_DOLLAR
+  """Australian Dollar"""
+  AUSTRALIAN_DOLLAR
+}
+
+"""Information about a specific customs document"""
+type CustomsDocument {
+  """A boolean representing customs document is required or not"""
+  required: Boolean!
+  """A URL for downloading this customs document"""
+  url: URL
+}
+
+"""DPD Shipping Label Information"""
+type DPDShippingLabelInfo {
+  """Carrier for this shipping label"""
+  carrier: String!
+  """Carrier code for this shipping label"""
+  carrierCode: String!
+  """Tracking number for this shipping label"""
+  trackingNumber: String!
+  """Total Weight"""
+  weight: Weight!
+  """Bar code text for the label"""
+  barcodeText: String!
+  """Dimensions for the package"""
+  dimensions: PackageDimensionType!
+  """Origin sort (oSort)"""
+  originSort: String!
+  """Destination Sort (dSort)"""
+  destinationSort: String!
+  """Destination Depot Code"""
+  destinationDepotCode: String!
+  """Service Code"""
+  serviceCode: String!
+  """Origin Depot Code"""
+  originDepotCode: String!
+  """Origin depot address"""
+  originDepotAddress: Address!
+}
+
+"""A type for date values"""
+scalar Date
+
+"""The size of some item in one direction"""
+type Dimension {
+  """The value of the object's length in a single direction"""
+  amount: Float!
+  """The unit this measurement is in"""
+  unit: LengthUnit!
+}
+
+"""An input for a set of 3D (L x W x H) dimensions"""
+input DimensionInput {
+  """The associated object's length"""
+  length: MeasurementInput!
+  """The associated object's width"""
+  width: MeasurementInput!
+  """The associated object's height"""
+  height: MeasurementInput!
+}
+
+"""Represents the currency id of the supplier"""
+enum ExtranetCurrency {
+  """US dollars"""
+  USD
+  """British pounds"""
+  GBP
+  """Euros"""
+  EUR
+  """Canadian dollars"""
+  CAD
+  """Australian dollars"""
+  AUD
+}
+
+"""The conjunction to add to the filter."""
+enum FilterConjunction {
+  """Used to perform logical conjunctions"""
+  AND
+  """Used to perform logical disjunctions"""
+  OR
+}
+
+"""Enumeration of shipping freight classes, broadly categorized as weight range per cubic foot. E.g., class 500 is used to represent freight with a weight density of 0-1 lbs per cubic foot"""
+enum FreightClass {
+  """Less than 1 lb - Bags of gold dust, ping pong balls"""
+  CODE_500
+  """1-2 lbs - Deer antlers"""
+  CODE_400
+  """2-3 lbs - Wood cabinets, tables, chairs setup, model boats"""
+  CODE_300
+  """3-4 lbs - Bamboo furniture, mattress and box spring, plasma TV"""
+  CODE_250
+  """4-5 lbs - Auto sheet metal parts, aircraft parts, aluminum table, packaged mattresses"""
+  CODE_200
+  """5-6 lbs - Clothing, couches stuffed furniture"""
+  CODE_175
+  """6-7 lbs - Auto sheet metal parts, bookcases"""
+  CODE_150
+  """7-8 lbs - Small Household appliances"""
+  CODE_125
+  """8-9 lbs - Cabinets, framed artwork, table saws"""
+  CODE_110
+  """9-10.5 lbs - Boat covers, car covers, canvas, wine cases, caskets"""
+  CODE_100
+  """10.5-12 lbs - Computers, monitors, refrigerators"""
+  CODE_92_5
+  """12-13.5 lbs - Crated machinery, cast iron stoves"""
+  CODE_85
+  """13.5-15 lbs - Tires, bathroom fixtures"""
+  CODE_77_5
+  """15-22.5 lbs - Car accessories & car parts, food items, automobile engines"""
+  CODE_70
+  """22.5-30 lbs - Car accessories & car parts, bottled beverages, books in boxes"""
+  CODE_65
+  """30-35 lbs - Car accessories & car parts"""
+  CODE_60
+  """35-50 lbs - Bricks, cement, mortar, hardwood flooring"""
+  CODE_55
+  """Over 50 lbs - Fits on standard shrink-wrapped 4X4 pallet, very durable"""
+  CODE_50
+}
+
+"""The size of the image in pixels"""
+input ImageSizeInput {
+  """The height of the image in pixels"""
+  height: Int!
+  """The width of the image in pixels"""
+  weight: Int
+  """The width of the image in pixels"""
+  width: Int
+}
+
+"""The Int32 scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1"""
+scalar Int32
+
+"""A date and time in the ISO 8601 format."""
+scalar IsoDateTime
+
+"""This type includes all the information that resulted from the generation of labels for a purchase order"""
+type LabelGenerationEvent {
+  """The identifier of the label generation event"""
+  id: ID!
+  """The date time that this event happened"""
+  eventDate: IsoDateTime!
+  """The date that the cartons should be picked up"""
+  pickupDate: IsoDateTime!
+  """The purchase order that this event occurred for"""
+  poNumber: Int32!
+  """Information about the Bill of Lading document this order belongs to including the download url"""
+  billOfLading: BillOfLading!
+  """This is the consolidated shipping label for this purchase order. It contains all the labels for the order"""
+  consolidatedShippingLabel: ShippingLabel!
+  """This is the customs document for this purchase order. It contains all the commercial invoices for the order"""
+  customsDocument: CustomsDocument!
+  """Information about generated shipping labels in this event"""
+  generatedShippingLabels: [ShippingLabelInfo]!
+  """The shipping label information for the purchase order"""
+  shippingLabelInfo: [ShippingLabelInterface]!
+  """The purchase order that this event occurred for"""
+  purchaseOrder: PurchaseOrder!
+  """The units that are being shipped according to this event"""
+  shippingUnits: [ShippingUnit!]!
+}
+
+"""Filterable fields for the LabelGenerationEvent class"""
+enum LabelGenerationEventFilterFields {
+  """The identifier of the label generation event"""
+  id
+  """The date time that this event happened"""
+  eventDate
+  """The date that the cartons should be picked up"""
+  pickupDate
+  """The purchase order that this event occurred for"""
+  poNumber
+}
+
+"""An Input type for filtering by fields of the LabelGenerationEvent type"""
+input LabelGenerationEventFilterInput {
+  """The filterable fields on the query's return type"""
+  field: LabelGenerationEventFilterFields
+  """The conjunction to add to the filter. Accepted values: AND, OR If only one filter exists for the query this will be ignored. The default value is AND if none is provided"""
+  conjunction: FilterConjunction
+  """The equals (=) comparator. If a value is provided for this comparator the results where the field value equals the value provided will be returned"""
+  equals: String
+  """The greater than (>) comparator. If a value is provided for this comparator the results where the field value is strictly greater than the value provided will be returned"""
+  greaterThan: String
+  """The greater than or equal (>=) to comparator. If a value is provided for this comparator the results where the field value is greater than or equal to the value provided will be returned"""
+  greaterThanOrEqualTo: String
+  """The less than (<) comparator. If a value is provided for this comparator the results where the field value is strictly less than the value provided will be returned"""
+  lessThan: String
+  """The less than or equal (<=) to comparator. If a value is provided for this comparator the results where the field value is less than or equal to the value provided will be returned"""
+  lessThanOrEqualTo: String
+  """The not equal (!=) comparator. If a value is provided for this comparator the results where the field value is not equal to the value provided will be returned"""
+  notEqualTo: String
+  """The in comparator. If a list of values is provided for this comparator the results where the field value is in the list of provided values will be returned"""
+  in: [String]
+  """The not in comparator. If a list of values is provided for this comparator the results where the field value is not in the list of provided values will be returned"""
+  notIn: [String]
+  """The is null comparator. If a value of true is provided for this comparator the results where the field value is null will be returned.If the value is false results where the field value is not null will be returned"""
+  isNull: Boolean
+}
+
+"""Units that can be used to measure a length"""
+enum LengthUnit {
+  """Inches"""
+  INCHES
+  """Centimeters"""
+  CENTIMETERS
+}
+
+"""A manufacturer of a product"""
+type Manufacturer {
+  """The id of the manufacturer"""
+  id: ID!
+  """The name of the manufacturer"""
+  name: String!
+  """The address of the manufacturer"""
+  address: Address!
+  """Whether or not this manufacturer's parts are whitelabeled or not"""
+  hasWhitelabeling: Boolean!
+}
+
+"""An input for 1D-measurements (length and unit)"""
+input MeasurementInput {
+  """The measurement value"""
+  value: Float!
+  """The unit type with which to evaluate the measure value"""
+  unit: LengthUnit
+}
+
+"""Some amount of money"""
+type Money {
+  """The number of currency units"""
+  amount: Float!
+  """The currency the amount is represented in"""
+  currency: Currency!
+}
+
+"""The NonEmptyString scalar type represents a non-empty string"""
+scalar NonEmptyString
+
+"""Dimensions Type of the package"""
+type PackageDimensionType {
+  """The length of the product"""
+  length: Dimension
+  """The width of the product"""
+  width: Dimension
+  """The height of the product"""
+  height: Dimension
+}
+
+"""An input representing a shipping package unit"""
+input PackageUnit {
+  """The type of shipping unit"""
+  unitType: PackageUnitType!
+  """The weight of the package"""
+  weight: WeightInput!
+  """The length dimensions of the package"""
+  dimensions: DimensionInput!
+  """The shipping unit's freight class, which is broadly categorized by weight"""
+  freightClass: FreightClass
+  """The products that should be in a single package"""
+  containedParts: [ContainedPart!]!
+}
+
+"""The types of packaging units that can be shipped"""
+enum PackageUnitType {
+  """A carton (box) unit"""
+  CARTON
+  """A sealed plastic bag unit"""
+  BAG
+  """A rolled-up unit"""
+  ROLL
+  """Any shipping unit that cannot be defined as a carton, roll, or bag"""
+  OTHER
+}
+
+"""An input for information required to process palletized shipping units"""
+input PalletInput {
+  """The additional weight expected from palletizing the shipping unit"""
+  weight: WeightInput!
+}
+
+"""Information about a product that a specific supplier has provided"""
+type Part {
+  """Universal Product Code for identifying the product"""
+  upc: String
+  """The id of a part from a supplier"""
+  supplierPartNumber: String!
+  """The id of a part from a manufacturer"""
+  manufacturerModelNumber: String!
+  """The amount of time it takes the supplier to ship the item when it is in stock"""
+  leadTime: Int!
+  """The amount of time it takes the supplier to ship replacement parts"""
+  replacementPartLeadTime: Int!
+  """The minimum value this product can be advertised for"""
+  mapPrice: Money
+  """The recommended retail price of this product (MSRP)"""
+  retailPrice: Money
+  """The products related to this part"""
+  products: [ProductVariation!]!
+  """The supplier that provided the part"""
+  supplier: Supplier!
+  """The manufacturer of the part"""
+  manufacturer: Manufacturer!
+  """The ID field for the manufacturer part"""
+  manufacturerPartId: Int32
+}
+
+"""The PositiveInt scalar type represents non-fractional signed whole numeric values. PositiveInt can represent values between 1 and 2^31 - 1 inclusive"""
+scalar PositiveInt
+
+"""This type contains the essential information for a single Wayfair product class"""
+type ProductClass {
+  """The id of the product class"""
+  id: Int
+  """The name of the product class"""
+  name: String
+  """The category id of the product class"""
+  categoryId: Int
+  """The category name of the product class"""
+  categoryName: String
+  """Fetches product class options for a product class"""
+  options: [ProductClassOption]
+  """Fetches product class attributes"""
+  attributes: [ProductClassAttribute]
+}
+
+"""A single attribute in a class schema"""
+type ProductClassAttribute {
+  """The id of the attribute"""
+  id: Int
+  """The name of the attribute"""
+  name: String
+  """The id of the parent attribute if any"""
+  parentId: Int
+  """The priority of the attribute"""
+  priority: String
+  """The data type that the attribute is represented by"""
+  dataType: String
+  """The definition of what the attribute actually represents"""
+  definition: String
+  """The display rank of this attribute"""
+  displayRank: Int
+  """Describes if the attribute is unavailable"""
+  unavailable: Int
+  """Describes if the attribute does not apply"""
+  doesNotApply: Int
+  """The list of enumeration values that this attribute value must fall into"""
+  enumValues: [String]
+}
+
+"""This type contains the essential information for a single Wayfair product class option"""
+type ProductClassOption {
+  """The name of the option's class' category"""
+  categoryName: String
+  """The rank of the option"""
+  rank: String
+}
+
+"""A collection of related products"""
+type ProductCollection {
+  """The id of the product collection"""
+  id: ID!
+  """The name of the collection"""
+  name: String!
+  """The description of the types of products in the collection"""
+  description: String
+  """The products that are a part of this collection"""
+  products: [WayfairProduct!]
+}
+
+"""This type contains the essential information about a single product option"""
+type ProductOption {
+  """The id of this option"""
+  id: ID
+  """The category of a product's option"""
+  category: String
+  """The name of the product option"""
+  name: String
+}
+
+"""A purchasable product listed on Wayfair's site with all of its attributes and option specific information"""
+type ProductVariation {
+  """URL to the product's page on wayfair.com"""
+  url: String
+  """The url to the product's image"""
+  imageUrl(size: ImageSizeInput): String
+  """When one can expect this product to be delivered if they order it right now"""
+  estimatedDeliveryDate: String
+  zipcode: String!
+  """The dimensions of this variation of the product in a human readable format"""
+  displayDimensions: String
+  """The variations of the product. This could be a color, size, material or some other property"""
+  optionCombination: [ProductOption!]!
+  """The product this is a variation of"""
+  product: WayfairProduct!
+  """The supplier parts that satisfy this product with this variation"""
+  parts: [Part!]
+}
+
+"""A purchase order"""
+type PurchaseOrder {
+  """The purchase order's id"""
+  id: Int
+  """The PO store prefix"""
+  storePrefix: String
+  """The PO number that identifies the purchase order"""
+  poNumber: String
+  """The date the purchase order was created"""
+  poDate: IsoDateTime
+  """The id of the purchase order's supplier Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierId: Int
+  """The name of the supplier the purchase order is for Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierName: String
+  """The first address of the supplier Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierAddress1: String
+  """The second address of the supplier Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierAddress2: String
+  """The third address of the supplier Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierAddress3: String
+  """The city the supplier is located in Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierCity: String
+  """The state the supplier is located in Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierState: String
+  """The postal code of the area the supplier is located Please see the supplier field for supplier information. This field will be removed 06/01/2019."""
+  supplierPostalCode: String
+  """The day the purchase order items are expected to ship"""
+  estimatedShipDate: IsoDateTime
+  """The day scheduled for the delivery of the purchase order"""
+  scheduledDeliveryDate: IsoDateTime
+  """The code representing the delivery method"""
+  deliveryMethodCode: String
+  """The name of the customer to deliver to"""
+  customerName: String
+  """The first address of the customer"""
+  customerAddress1: String
+  """The second address of the customer"""
+  customerAddress2: String
+  """The city of the customer's address"""
+  customerCity: String
+  """The state of the customer's address"""
+  customerState: String
+  """The postal code of the customer's address"""
+  customerPostalCode: String
+  """The country of the customer's address"""
+  customerCountry: String
+  """The sales channel this purchase order was made from"""
+  salesChannelName: String
+  """The type of order that was placed"""
+  orderType: String
+  """Information about how this purchase order should be shipped"""
+  shippingInfo: PurchaseOrderShipping
+  """The total cost for a purchase order on an Invoice"""
+  orderCost: Float @deprecated(reason: "as this field is no longer relevant in the context of purchase order. This field will be removed 02/01/2020.")
+  """The voucher this purchase order was paid on"""
+  paymentId: Int @deprecated(reason: "as this field is no longer relevant in the context of purchase order. This field will be removed 02/01/2020.")
+  """The current status of the purchase order"""
+  status: String @deprecated(reason: "as this field is no longer relevant in the context of purchase order. This field will be removed 02/01/2020.")
+  """The source of this purchase order"""
+  source: Int
+  """The URL to download the packing slip for this purchase order"""
+  packingSlipUrl: String
+  """The currency id for this purchase order"""
+  currencyId: String @deprecated(reason: "as this field is no longer relevant in the context of purchase order. This field will be removed 02/01/2020.")
+  """Load the supplier this purchase order is intended for"""
+  warehouse: Warehouse
+  """The list of products in the purchase order"""
+  products: [PurchaseOrderProduct]
+  """The address to ship this order to"""
+  shipTo: Address!
+  """The billing address of the order"""
+  billTo: Address!
+  """The billing information"""
+  billingInfo: BillingInfo
+}
+
+"""A purchase order product"""
+type PurchaseOrderProduct {
+  """The part number of the product"""
+  partNumber: String
+  """The quantity of the product that the customer ordered"""
+  quantity: String
+  """The price the customer ordered the product for"""
+  price: Float
+  """The number of pieces in the product"""
+  pieceCount: Int
+  """The total cost of the product"""
+  totalCost: Float
+  """The name of the product"""
+  name: String
+  """How much the product weighs"""
+  weight: Float
+  """How much the total product set weighs"""
+  totalWeight: Float
+  """Estimated ship date"""
+  estShipDate: String
+  """Order product estimated fill date"""
+  fillDate: String
+  """SKU number of this product"""
+  sku: String
+  """Whether or not this purchase order line item has been cancelled"""
+  isCancelled: Boolean!
+  """Specifies whether regulated composite wood products and finished goods containing composite wood products, manufactured in or imported into the United States, are certified as compliant with the TSCA Title VI or the California Air Resources Board (CARB) Airborne Toxic Control Measures (ATCM) Phase II emission standards"""
+  isTscaCompliant: Boolean
+  """Whether or not this product was ordered with a two day guarantee"""
+  twoDayGuaranteeDeliveryDeadline: IsoDateTime
+  """The sales event that the purchase order was made in"""
+  event: SalesEvent
+  """Customization data for this product (monogram, name, other text, etc)"""
+  customComment: String
+}
+
+"""Shipping information related to a purchase order"""
+type PurchaseOrderShipping {
+  """The class of the speed the order needs to be shipped with"""
+  shipSpeed: ShipSpeed
+  """The carrier code for the shipment"""
+  carrierCode: String
+  """The pool point agent for the delivery"""
+  poolPointAgent: Agent
+  """The cross dock agent for the delivery"""
+  crossDockAgent: Agent
+  """The delivery agent for the order"""
+  deliveryAgent: Agent
+}
+
+"""An input for registering package shipments with Wayfair"""
+input RegistrationInput {
+  """The identifying purchase order number"""
+  poNumber: String!
+  """The Wayfair ID of the warehouse from which the shipping units should be picked up.Defaults to the PO's currently assigned warehouse ID"""
+  warehouseId: ID
+  """The date on which the shipping units will be ready to ship.Defaults to the date and time of the registration request"""
+  requestForPickupDate: IsoDateTime
+  """The individual shipping units associated with the purchase order.Defaults to the shipping data found in Wayfair's catalog"""
+  shippingUnits: [ShippingUnitInput!]
+  """The individual package units associated with the purchase order.Meaning of this field is the same as the shippingUnits, only the structure is different"""
+  packageUnits: [PackageUnit!]
+}
+
+"""A sales event hosted on Wayfair's storefront websites"""
+type SalesEvent {
+  """The identifier for the sales event"""
+  id: ID!
+  """The type of the event"""
+  type: String
+  """The name of the event"""
+  name: String
+  """The date and time that the event started"""
+  startDate: IsoDateTime
+  """The date and time that the event ended"""
+  endDate: IsoDateTime
+}
+
+"""An API scope defining specific permissions for API access"""
+type Scope {
+  """The id of the scope"""
+  id: ID
+  """The name of the scope. E.g. Read Class Schema"""
+  name: String
+  """The action:Type formatted name of the scope. E.g. read:product_class"""
+  permissionName: String
+  """The permission description"""
+  description: String
+}
+
+"""The different ship speed delivery methods"""
+enum ShipSpeed {
+  """2nd Day Air Delivery"""
+  SECOND_DAY_AIR
+  """2-Day Delivery -- Free!"""
+  SECOND_DAY_AIR_FREE
+  """Global 5-Day Direct Delivery"""
+  FIVE_DAY_DIRECT
+  """3 Day Delivery"""
+  THREE_DAY
+  """Container"""
+  CONTAINER
+  """Zustellung per Email"""
+  EMAIL
+  """FedEx Home Delivery"""
+  FEDEX_HOME
+  """Small Parcel Courier"""
+  GROUND
+  """Small Parcel Courier"""
+  PAKETVERSAND
+  """Imperial Pool Freight"""
+  IMPERIAL_POOL_FREIGHT
+  """Next Day Air"""
+  NEXT_DAY
+  """Next Day Air (AK,HI,PR)"""
+  NEXT_DAY_OVERSEAS
+  """UK - SP - Next day before noon"""
+  NEXT_MORNING
+  """UK - SP - Next day before 9am"""
+  NEXT_DAY_BEFORE_NINE
+  """Will Call"""
+  WILL_CALL
+  """UK - SP - Saturday delivery"""
+  SATURDAY_DELIVERY
+  """Casket Delivery - 1 Day"""
+  TRUCK_FREIGHT_CASKETS_ONE_DAY
+  """Casket Delivery - 2 Day"""
+  TRUCK_FREIGHT_CASKETS_TWO_DAY
+  """Curbside with unload service"""
+  CURBSIDE_WITH_UNLOAD
+  """Truck Load"""
+  TRUCK_LOAD
+  """Curbside without unload service"""
+  CURBSIDE
+  """Spedition - frei Bordsteinkante"""
+  WHITE_GLOVE_BRONZE
+  """Room of Choice & Packaging Removal"""
+  WHITE_GLOVE_GOLD
+  """Premium 2-Man Delivery"""
+  WHITE_GLOVE_TWO_MAN
+  """Room of Choice Delivery with Installation"""
+  WHITE_GLOVE_PLATINUM
+  """Room of Choice"""
+  WHITE_GLOVE_SILVER
+  """Truck Freight - Threshold"""
+  TRUCK_FREIGHT_THRESHOLD
+  """Standard-Versand Sperrgut"""
+  STANDARD_VERSAND_SPERRGUT
+  """ALMO - Room of Choice + Removal of Old Appliance"""
+  ALMO
+  """Large Parcel Courier"""
+  LARGE_PARCEL_COURIER
+  """European Line Haul"""
+  EUROPEAN_LINE_HAUL
+  """Economy"""
+  ECONOMY
+  """White Glove Delivery - Room of Choice"""
+  WHITE_GLOVE_ROOM_OF_CHOICE
+  """Small Parcel"""
+  TINY_PARCEL
+  """GROUND (AK,HI,PR)"""
+  GROUND_OVERSEA
+  """Low Cost Carrier"""
+  LOW_COST_CARRIER
+  """Innovel Delivery Service"""
+  WHITE_GLOVE_INNOVEL
+  """Backyard Drop-Off"""
+  BACKYARD
+  """Curbside Delivery"""
+  CURBSIDE_DELIVERY
+  """Inside Delivery - Packaging Removal & Removal of Old Appliance"""
+  INSIDE_DELIVERY_PACKAGING_REMOVAL_REMOVAL_OF_OLD_APPLIANCE
+  """One Man Premium"""
+  ONE_MAN_PREMIUM
+  """Inside Delivery - Packaging Removal"""
+  INSIDE_DELIVERY_PACKAGING_REMOVAL
+  """Threshold Delivery"""
+  THRESHOLD_DELIVERY
+  """Large Parcel Courier"""
+  UK_1_MAN_48HRS
+  """Allied Road Express"""
+  ALLIED_ROAD_EXPRESS
+  """Hunter Road Express"""
+  HUNTER_ROAD_EXPRESS
+  """White Glove - Capital Cities"""
+  WHITE_GLOVE_CAPITAL_CITIES
+  """Spedition - frei Bordsteinkante"""
+  SPEDITION_FREI_BORDSTEINKANTE
+  """Large Parcel Courier"""
+  UK_1_MAN_LONG_DELIVERY
+  """In Home Mattress Set Up & Removal"""
+  IN_HOME_MATTRESS_SET_UP_REMOVAL
+  """Room of Choice Delivery w/ Installation"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_INSTALLATION
+  """Room of Choice Delivery w/ Installation & Haul Away"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_INSTALLATION_HAUL_AWAY
+  """Room of Choice Delivery w/ Haul Away"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_HAUL_AWAY
+  """Room of Choice Delivery w/ Move to Another Room"""
+  ROOM_OF_CHOICE_DELIVERY_W_MOVE_TO_ANOTHER_ROOM
+  """Room of Choice Delivery w/ Install & Move to Another Room"""
+  ROOM_OF_CHOICE_DELIVERY_W_INSTALL_MOVE_TO_ANOTHER_ROOM
+  """Room of Choice Delivery"""
+  GE_WG_DELIVERY
+  """Samsung Delivery Service"""
+  SAMSUNG_WG_DELIVERY
+  """Wayfair Large Appliances Delivery"""
+  WAYFAIR_LARGE_APPLIANCES_DELIVERY
+  """Off The Shelf Item"""
+  WAYFAIR_OFF_THE_SHELF
+}
+
+"""Information about a specific shipping label"""
+type ShippingLabel {
+  """A URL for downloading this shipping label"""
+  url: URL!
+}
+
+"""Information about generated shipping label"""
+type ShippingLabelInfo {
+  """Purchase order number"""
+  poNumber: Int32!
+  """Full purchase order number"""
+  fullPoNumber: String!
+  """Number of labels"""
+  numberOfLabels: Int32!
+  """Carrier for this shipping label"""
+  carrier: String!
+  """Carrier code for this shipping label"""
+  carrierCode: String!
+  """Tracking number for this shipping label"""
+  trackingNumber: String!
+}
+
+"""Interface for a Shipping Label - this contains all the common properties a label should have"""
+interface ShippingLabelInterface {
+  """Carrier for this shipping label"""
+  carrier: String!
+  """Carrier code for this shipping label"""
+  carrierCode: String!
+  """Tracking number for this shipping label"""
+  trackingNumber: String!
+}
+
+"""A unit that is being shipped out. In this sense, a unit is a single quantity of a single product part in a single box"""
+type ShippingUnit {
+  """This is an identifier representing which instance of this particular part this unit belongs to. For instance, if a purchase order has a single part with a quantity of 2, the group will either be 1 or 2. If the group is 1 this shipping unit refers to the first instance of the product"""
+  groupIdentifier: PositiveInt!
+  """This is an identifier representing the box number in the group that this shipping unit belongs to. For instance, if a specific part only has one group, but the group is shipped in 5 boxes the sequences for the group will range from 1 to 5. Note that there can only be one of each"""
+  sequenceIdentifier: PositiveInt!
+  """The part that this shipping unit is associated with"""
+  part: Part!
+}
+
+"""An input representing a shipping unit"""
+input ShippingUnitInput {
+  """The ordered product's identifier"""
+  partNumber: NonEmptyString!
+  """The type of shipping unit"""
+  unitType: ShippingUnitType!
+  """The weight of the package"""
+  weight: WeightInput!
+  """The length dimensions of the package"""
+  dimensions: DimensionInput!
+  """The shipping unit's freight class, which is broadly categorized by weight"""
+  freightClass: FreightClass
+  """Additional information which is required for all palletized shipments. Only provide this data if the shipment is palletized"""
+  palletInfo: PalletInput
+  """A numeric identifier used to associate all the shipping units related to a single instance of an item. This value should be equal for all shipping units which contain pieces of a single product. E.g., if 2 of the same product are requested with a purchase order, all the cartons containing parts of the first product should have a groupIdentifier of 1, and all cartons for the second item have a groupIdentifier of 2"""
+  groupIdentifier: PositiveInt!
+  """A numeric identifier used to distinguish between the shipping units related to a single item. This value should be different for all shipping units instances related to a single product. E.g., if an ordered item ships in three different cartons, there should be 3 distinct shippingUnitInputs with sequenceIdentifiers of 1, 2 and 3"""
+  sequenceIdentifier: PositiveInt!
+}
+
+"""The types of packaging units that can be shipped"""
+enum ShippingUnitType {
+  """A carton (box) unit"""
+  CARTON
+  """A sealed plastic bag unit"""
+  BAG
+  """A rolled-up unit"""
+  ROLL
+  """Any shipping unit that cannot be defined as a carton, roll, or bag"""
+  OTHER
+}
+
+"""A supplier entity"""
+type Supplier {
+  """The unique identifier for a supplier"""
+  id: ID
+  """The name of the supplier"""
+  name: String
+  """The shortened name of the supplier"""
+  shortName: String
+  """Status of supplier"""
+  status: SupplierStatus
+  """The web address of the supplier's site"""
+  websiteURL: String
+  """The currency id of the supplier"""
+  currency: ExtranetCurrency
+  """Load the scopes accessible to this supplier"""
+  scopes: [Scope]
+  """Load the child suppliers of this supplier"""
+  warehouses: [Warehouse!]
+}
+
+"""Represents the status of the supplier"""
+enum SupplierStatus {
+  """Active Status"""
+  ACTIVE
+  """Inactive Status"""
+  INACTIVE
+  """Being Added Status"""
+  BEING_ADDED
+  """On Hold Status"""
+  ON_HOLD
+}
+
+"""A URL as described by IEFT RFC 1738 ( https://tools.ietf.org/html/rfc1738)"""
+scalar URL
+
+"""Information for a supplier warehouse"""
+type Warehouse {
+  """The id of the warehouse"""
+  id: ID
+  """The name of the warehouse"""
+  name: String
+  """The address of the warehouse"""
+  address: Address
+  """The company this warehouse belongs to"""
+  supplier: Supplier
+}
+
+"""A product that Wayfair has on site"""
+type WayfairProduct {
+  """The sku representing the product"""
+  sku: String!
+  """The name of the product as it is listed on wayfair.com"""
+  name: String!
+  """URL to the page of one of the product's variations on wayfair.com"""
+  url: String
+  """The url to an image of one of this product's variations"""
+  imageUrl(size: ImageSizeInput): String
+  """The product's rating from customers. Out of 5"""
+  averageOverallRating: Float
+  """The number of the product that must be ordered together"""
+  minimumOrderQuantity: Int
+  """The number of pieces included"""
+  setQuantity: Int
+  """The number of pieces included in the product as shown on site"""
+  displaySetQuantity: Int
+  """The status of the product"""
+  status: String
+  """More detailed information about the current status of the product"""
+  statusDetail: String
+  """The harmonized system code of the product (excluding the country code portion)"""
+  harmonizedSystemCode: String
+  """The code of the product for Canada"""
+  canadaCode: String
+  """The minimum height of the product"""
+  minimumHeight: Dimension
+  """The maximum height of the product"""
+  maximumHeight: Dimension
+  """The minimum width of the product"""
+  minimumWidth: Dimension
+  """The maximum width of the product"""
+  maximumWidth: Dimension
+  """The minimum depth of the product"""
+  minimumDepth: Dimension
+  """The maximum depth of the product"""
+  maximumDepth: Dimension
+  """The class of products this product belongs to"""
+  class: ProductClass
+  """The manufacturer that made the part"""
+  manufacturer: Manufacturer
+  """The collection this product is a part of"""
+  collection: ProductCollection
+  """The variations this product comes in"""
+  options: [ProductOption!]
+  """Each active option combination of this product"""
+  variations: [ProductVariation!]
+  """The return policy of the product"""
+  returnPolicy: String!
+}
+
+"""The weight of some object"""
+type Weight {
+  """The amount of weight"""
+  amount: Float!
+  """The unit of the weight"""
+  unit: WeightUnit!
+}
+
+"""An input for weight measurements"""
+input WeightInput {
+  """The numeric value of the weight measurement"""
+  value: Float!
+  """The unit in which the value is measured"""
+  unit: WeightUnit!
+}
+
+"""An enumeration of the different weight units that are supported"""
+enum WeightUnit {
+  """Pounds (lbs)"""
+  POUNDS
+  """Kilograms (kg)"""
+  KILOGRAMS
+}
+
+"""Allows for ordering of elements"""
+input orderingInput {
+  """The ascending ordering. When a param is provided the result set will be ordered in ascending order according to the param provided"""
+  asc: String
+  """The descending ordering. When a param is provided the result set will be ordered in descending order according to the param provided"""
+  desc: String
+}

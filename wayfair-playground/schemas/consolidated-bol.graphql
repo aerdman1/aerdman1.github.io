@@ -1,0 +1,39 @@
+# Consolidated Bill of Lading API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/consolidated-bol-documentation-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """Get access to a Consolidated BOL Document generated for eligible supplier orders on the given date."""
+  consolidatedBolDocument(
+    """The id of the supplier making the request"""
+    supplierId: Int!
+    """The date on which consolidated BOL will be generated"""
+    date: Date!
+  ): ConsolidatedBolDocumentPayload!
+}
+
+"""The types of consolidated BOL document availability"""
+enum ConsolidatedBolAvailability {
+  """Available for download"""
+  AVAILABLE
+  """Not found, likely no orders found to include in a Consolidated BOL"""
+  NOT_FOUND
+}
+
+"""This type includes all the information related to the Consolidated BOL Document"""
+type ConsolidatedBolDocumentPayload {
+  """The availability of a Consolidated BOL"""
+  availability: ConsolidatedBolAvailability!
+  """If available, url to the Consolidated BOL"""
+  url: String
+  """Consolidated BOL document number"""
+  bolNumber: String
+  """BOL document link expiration date"""
+  linkExpirationDatetime: String
+  """shipment references"""
+  shipmentReferences: [String]
+}
+
+"""A type for date values"""
+scalar Date

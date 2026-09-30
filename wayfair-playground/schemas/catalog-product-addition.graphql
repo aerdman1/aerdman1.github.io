@@ -1,0 +1,963 @@
+# Product Addition API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/product-catalog-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/product-catalog-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+# Corrected 2026-09-30 against the API Playground's own operations (fix_schemas.py):
+#   Query.supplierBrand -> SupplierBrandQueries { brandAssociations }
+#   Query.productAddition -> ProductAdditionQueries { questions, submissions }
+#   Query.media -> MediaQueries { mediaMetaDataTags }
+#   Mutation.productAddition -> ProductAdditionMutations { submit }
+
+type Query {
+  """Query for fetching taxonomy categories by page using market context"""
+  taxonomyCategories(
+    marketContext: MarketContextInput!
+    paginationOptions: PaginationOptions
+  ): TaxonomyCategoriesResult
+  """Brand associations for a supplier."""
+  supplierBrand: SupplierBrandQueries
+  """Product addition questions and submissions."""
+  productAddition: ProductAdditionQueries
+  """Media metadata."""
+  media: MediaQueries
+}
+
+"""Media metadata. Reached as `query { media { … } }`."""
+type MediaQueries {
+  """Retrieve media meta data tags"""
+  mediaMetaDataTags(
+    mediaMetaDataTag: MediaMetaDataTagInput!
+  ): [MediaMetaDataTagSet!]!
+}
+
+"""Product addition questions and submissions. Reached as `query { productAddition { … } }`."""
+type ProductAdditionQueries {
+  """Fetches product addition questions for a given combination of supplierId, marketContext, and classId. For details about each input parameter, see the documentation for the GetProductAdditionQuestionsRequest type."""
+  questions(
+    request: GetProductAdditionQuestionsRequest!
+  ): [ProductAdditionQuestion]!
+  """Fetches product additions by request ids. The output of the productAddition.submit mutation is typically the input for this query."""
+  submissions(
+    request: GetProductAdditionsRequest!
+  ): [ProductAddition]
+}
+
+"""Brand associations for a supplier. Reached as `query { supplierBrand { … } }`."""
+type SupplierBrandQueries {
+  """Fetches brands associated with a given supplier and market context."""
+  brandAssociations(
+    request: GetSupplierBrandsAssociationsRequest
+  ): GetSupplierBrandsAssociationsResponse
+}
+
+type Mutation {
+  """Submit product additions."""
+  productAddition: ProductAdditionMutations
+}
+
+"""Submit product additions. Reached as `mutation { productAddition { … } }`."""
+type ProductAdditionMutations {
+  """Initiates the product addition submission flow for a given supplierId. Up to 200 products are allowed. Proposed product additions should be grouped by marketContext and classId. For each product, answers must be provided for the questions fetched using the productAddition.questions query. For details about each input parameter, see the documentation for the SubmitProductAdditionsRequest type."""
+  submit(
+    request: SubmitProductAdditionsRequest!
+    ProposedProductAdditionsInput: SubmitProductAdditionRequest!
+  ): SubmitProductAdditionsResponse!
+}
+
+"""Encapsulates the details of a given answer to a product addition question."""
+input Answer {
+  """The questionId returned from the productAddition.questions query."""
+  questionId: String!
+  """The question answer represented as a string. It needs to conform to the data type specified by the QuestionAnswerType field in the ProductAdditionQuestion type."""
+  value: String!
+  """Applicable when providing multiple answers for a multi-value question (i.e., isMultiValue == true). Set the first answer to number 1, then increment for subsequent answers. Can be used in conjunction with rank. Default value = 1"""
+  parentRank: Int!
+  """Applicable when providing multiple answers for a multi-choice question (i.e., QuestionAnswerType == MULTI_CHOICE). Set the first answer to number 1, then increment for subsequent answers. Can be used in conjunction with parentRank. Default value = 1"""
+  rank: Int!
+}
+
+"""Return type for the TaxonomyAttributesByFilter query"""
+type AttributesByFilterResult {
+  """The ID of the taxonomy category to which all attributes belong"""
+  taxonomyCategoryId: ID!
+  """All attributes of the category in the given market"""
+  attributes: [TaxonomyAttribute]
+  """List of "if-then" rules that define conditional logic between questions. For example, if "Material" (upstream) is answered as "Metal", then the "Wood Species" question (downstream) should automatically be answered as "Does Not Apply"."""
+  conditionalityRules: [MarketAwareConditionalityData!]
+}
+
+"""Input for querying taxonomy attributes by category and market"""
+input AttributesFilterInput {
+  """The taxonomy category ID for retrieving taxonomy attributes."""
+  taxonomyCategoryId: ID!
+  """The market context for retrieving taxonomy attributes."""
+  marketContext: MarketContextInput!
+}
+
+enum BrandInput {
+  WAYFAIR
+  JOSS_AND_MAIN
+  PERIGOLD
+  ALLMODERN
+  BIRCHLANE
+}
+
+"""All possible fields that can be updated on a catalog entity"""
+enum CatalogEntityProperty {
+  """Refers to the name field of the catalog item group"""
+  ITEM_GROUP_NAME
+  """Refers to the featureBullets field of the catalog item group"""
+  ITEM_GROUP_FEATURE_BULLETS
+  """Refers to the marketingCopy field of the catalog item group"""
+  ITEM_GROUP_MARKETING_COPY
+  """Refers to the name field of the catalog item"""
+  ITEM_NAME
+  """Refers to the taxonomyAttributes field of the catalog item"""
+  ITEM_TAXONOMY_ATTRIBUTES
+  ITEM_MEDIA
+}
+
+"""Indicates what was successfully updated for a specific catalog item or item group"""
+type CatalogEntitySuccessfulUpdate {
+  """The identifier of the catalog item or item group."""
+  entityIdentifier: String!
+  """Catalog entity fields that were successfully updated"""
+  catalogEntityProperty: CatalogEntityProperty!
+}
+
+"""Problems that occurred when attempting to update a catalog item or item group"""
+type CatalogEntityUpdateProblem {
+  """This is equivalent to the problem "type" field in the problem detail specification. Example: INVALID_INPUT"""
+  code: String
+  """This indicates why the issue occurred. It is a short, human-readable summary of the problem type. Example: "Special characters such as !,@,#,$,% are not allowed" """
+  title: String
+  """Human-readable explanation specific to this occurrence of the problem. Example: "The provided input contains special characters @ and !" """
+  detail: String
+  """Entity identifier, i.e., catalog item or item group ID. Example:"""
+  catalogEntityIdentifier: String
+  """The catalog entity property that caused the problem. Example: ITEM_NAME"""
+  catalogEntityProperty: CatalogEntityProperty
+  """For catalog entity properties that have IDs associated with each field within the property (such as taxonomy attributes), this is used to identify which field within the property has an issue. Example (when the value provided for taxonomy attribute id: 1234 has a problem), this field will be "1234" """
+  catalogEntityPropertyId: String
+  """The original input value that failed, represented as a string. Example: "Cl@rendon Sofa!" """
+  inputValue: String
+}
+
+"""Used to describe whether a request to update a catalog item or item group has been completed."""
+enum CatalogEntityUpdateStatus {
+  """Update request is still being processed"""
+  IN_PROGRESS
+  """Update request has been completed. Note: COMPLETED does not necessarily mean fully successful; please check the Problems and SuccessfulUpdates fields"""
+  COMPLETED
+  BLOCKED
+}
+
+enum CountryInput {
+  UNITED_STATES
+  """Updates to the German catalog are no longer allowed."""
+  GERMANY
+  UNITED_KINGDOM
+  """Updates to the Canadian catalog are no longer allowed."""
+  CANADA
+}
+
+"""Downstream condition."""
+type DownstreamCondition {
+  """Question token."""
+  taxonomyAttributeId: String!
+  """Upstream operation, such as equals, contains, does not contain, etc."""
+  operation: DownstreamOperation!
+  """The answer value in string form."""
+  answers: [String]!
+  """The answer value in string form."""
+  validationType: DownstreamValidation
+}
+
+"""Possible downstream operation types."""
+enum DownstreamOperation {
+  ASSIGN
+  EXCLUDE
+}
+
+"""Downstream validation type"""
+enum DownstreamValidation {
+  ERROR
+  WARNING
+}
+
+"""Encapsulates the input for the productAddition.questions query."""
+input GetProductAdditionQuestionsRequest {
+  """The market context under which the product should be listed."""
+  marketContext: MarketContextInput
+  """The classId, used to identify and then return questions for a specific category."""
+  classId: Int!
+}
+
+"""Encapsulates the required and optional inputs needed to fetch product addition requests."""
+input GetProductAdditionsRequest {
+  """The supplierId. All proposed product additions will be associated with this supplierId."""
+  supplierId: ID!
+  """Array of requestIds. These IDs will be returned from the productAddition.submit mutation."""
+  ids: [ID!]!
+}
+
+input GetProductDescriptionByPartInput {
+  """The supplier ID that the update is targeted at."""
+  supplierId: Int!
+  """List of supplier parts mapped to SKUs"""
+  supplierPartNumbers: [String!]!
+}
+
+type GetProductDescriptionByPartResponse {
+  """SKU associated with the supplier part number and market context"""
+  sku: String!
+  """List of supplier parts mapped to SKUs"""
+  supplierPartNumbers: [String!]!
+  """List of market details mapped to SKU"""
+  markets: [SkuMarketDescription!]!
+}
+
+"""Encapsulates the input for the productAddition.brandAssociations query."""
+input GetSupplierBrandsAssociationsRequest {
+  """The supplierId associated with this brand association."""
+  supplierId: Int!
+  """The market context associated with this brand association."""
+  marketContext: MarketContextInput!
+  """The page number associated with this brand association."""
+  page: Int
+  """The page size associated with this brand association."""
+  pageSize: Int!
+}
+
+"""Encapsulates the response to the productAddition.brandAssociations query."""
+type GetSupplierBrandsAssociationsResponse {
+  """List of supplier brands associated with the supplier."""
+  brands: [SupplierBrandAssociation]
+  """PageInfo containing page information response."""
+  pageInfo: SupplierBrandPageInfo!
+}
+
+"""Encapsulates manufacturer details."""
+type Manufacturer {
+  """The unique identifier for the manufacturer."""
+  id: ID!
+  """The name of the manufacturer."""
+  name: String
+}
+
+"""Conditionality rules with tokens marked as upstream questions and their downstream conditions."""
+type MarketAwareConditionalityData {
+  """Question token"""
+  taxonomyAttributeId: String!
+  """Conditionality rules"""
+  rules: [MarketAwareConditionalityRule!]!
+}
+
+"""Conditionality rules with a question tagged as upstream along with their downstream conditions."""
+type MarketAwareConditionalityRule {
+  """Upstream conditions"""
+  upstreamCondition: UpstreamCondition!
+  """Downstream conditions"""
+  downstreamConditions: [DownstreamCondition!]!
+}
+
+type MarketContext {
+  """A locale encompasses a combination of language, territory, and code set used to identify a set of language conventions. It is represented by a code in the format "ll-CC", where "ll" is represented by ISO 639-1 (https://en.wikipedia.org/wiki/ISO_639-1) and "CC" is represented by ISO 3166-1 alpha-2 (https://www.iban.com/country-codes). Examples: en-US, en-GB, fr-CA, etc."""
+  locale: String
+  """Unique country code ISO 3166-1 alpha-2 (https://www.iban.com/country-codes) used to represent the Wayfair market. Examples: US (United States), GB (United Kingdom)"""
+  country: String
+  """The Wayfair brand family is an intangible marketing or business concept that helps people identify the company or products. Examples: WF (Wayfair), JM (Joss & Main), PG (Perigold), AM (AllModern), BL (Birch Lane)"""
+  brand: String
+}
+
+input MarketContextInput {
+  """A locale encompasses a combination of language, territory, and code set used to identify a set of language conventions. It is represented by a code in the format "ll-CC", where "ll" is represented by ISO 639-1 (https://en.wikipedia.org/wiki/ISO_639-1) and "CC" is represented by ISO 3166-1 alpha-2 (https://www.iban.com/country-codes). Examples: en-US, en-GB, fr-CA, etc."""
+  locale: String
+  """The country representing the Wayfair market."""
+  country: CountryInput
+  """The Wayfair brand family is an intangible marketing concept that helps people identify the company or products."""
+  brand: BrandInput
+}
+
+enum MeasurementName {
+  PRESSURE
+  SPEED
+  LENGTH
+  VOLUME
+  WEIGHT
+  TEMPERATURE
+  SOUND
+  ANGLE
+  ELECTRICITY
+  TIME
+  AGE
+  CAPACITY
+  POWER
+  BRIGHTNESS
+  DENSITY
+}
+
+"""Unit for providing measurement information in taxonomy attribute values"""
+type MeasurementUnit {
+  """Measurement unit name"""
+  name: String
+  """The common symbol for this unit of measurement."""
+  symbol: String
+}
+
+"""Media documents that can be associated with a product."""
+input MediaDocumentInput {
+  """You can provide this to indicate whether the media document is a DOCUMENT or LEGAL_DOCUMENT"""
+  mediaDocumentType: MediaDocumentTypeInput!
+  """The publicly accessible URL of the document."""
+  documentUrl: Url!
+  """Document types, must be one of the allowed types specified by the mediaMetadataTags query for DOCUMENT and LEGAL_DOCUMENT types."""
+  documentTypes: [String!]!
+  """Region type, must be one of the allowed types specified by the mediaMetadataTags query for REGION type."""
+  regionType: String!
+  """Language, must be one of the allowed types specified by the mediaMetadataTags query for LANGUAGE type."""
+  language: String
+}
+
+"""Whether the media document type in the answer is DOCUMENT or LEGAL_DOCUMENT"""
+enum MediaDocumentTypeInput {
+  DOCUMENT
+  LEGAL_DOCUMENT
+}
+
+"""All media associated with a product."""
+input MediaInput {
+  """The URL of the publicly accessible image."""
+  images: [Url!]
+  """The URL of the publicly accessible video."""
+  videos: [Url!]
+  """Documents that should be associated with the product."""
+  documents: [MediaDocumentInput!]
+}
+
+"""Media metadata tag"""
+type MediaMetaDataTag {
+  """The ID of the media metadata tag"""
+  metaDataId: ID!
+  """Media metadata name"""
+  name: String!
+}
+
+"""Media metadata tag input filter"""
+input MediaMetaDataTagInput {
+  """The media metadata tag type that should be received (e.g., document type, legal document type, language type, region type)"""
+  metaDataTagTypes: [MediaMetaDataTagTypeInput!]!
+  """Market context."""
+  marketContext: MarketContextInput!
+}
+
+"""Media metadata tag set"""
+type MediaMetaDataTagSet {
+  """Media metadata tag type, such as document type, legal document type, language type, region type"""
+  metaDataTagType: String!
+  """Metadata tags"""
+  metaDataTags: [MediaMetaDataTag!]!
+}
+
+"""Media metadata tag type, such as document type, legal document type, language type, region type"""
+enum MediaMetaDataTagTypeInput {
+  DOCUMENT
+  LEGAL_DOCUMENT
+  LANGUAGE
+  REGION
+}
+
+"""Media types supported by Wayfair"""
+enum MediaType {
+  """Media represents an image, allowed file extensions are: png, jpg, jpeg"""
+  IMAGE
+  """Media represents a video, allowed file extensions are: mp4, mov, wmv"""
+  VIDEO
+  """Media represents a PDF document, must have file extension: pdf."""
+  DOCUMENT
+}
+
+"""Status indicating whether an operation has results, succeeded, or failed."""
+enum OperationStatus {
+  SUCCEEDED
+  FAILED
+}
+
+"""Meta information about pagination"""
+type PaginationInfo {
+  """The page number of taxonomy categories to be returned. The first page is 1."""
+  page: Int!
+  """The number of requested taxonomy categories that will be returned per page. This value can be one of the following: 10, 20, 25, 50."""
+  pageSize: Int!
+  """Whether the current pagination selection has a next page."""
+  hasNextPage: Boolean!
+  """The total number of pages the current dataset and pagination selection can display."""
+  totalPages: Int!
+}
+
+"""Generic specification for paginating through a list of items"""
+input PaginationOptions {
+  """The page number of the taxonomy categories that will be returned. The first page is 1."""
+  page: Int
+  """The requested number of taxonomy categories that will be returned per page. This value can be one of these: 10, 20, 25, 50."""
+  pageSize: Int
+}
+
+"""Possible answers to product addition questions which must be answered from a list of possibilities."""
+type PossibleAnswer {
+  """An identifier, suitable for use as key in a UI "pick list" component."""
+  key: String
+  """The answer's value. THIS is the value which must ultimately be supplied when answer questions with the productAddition.submit mutation."""
+  value: String
+}
+
+"""Provides human and machine readable details about issues that occur when making an API call, along with any additional context about where the error happened. This largely conforms to the ProblemDetail specification RFC 9457 (formerly 7807) https://www.rfc-editor.org/rfc/rfc9457.html"""
+interface ProblemDetail {
+  """This is equivalent to the problem "type" field in the problem detail specification. It represents the type of problem encountered. Example: INVALID_INPUT"""
+  code: String
+  """This indicates why the issue occurred. It is a short, human-readable summary of the problem type. Example: "Special characters such as !,@,#,$,% are not allowed" """
+  title: String
+  """Human-readable explanation specific to this occurrence of the problem. Example: "The provided input contains special characters @ and !" """
+  detail: String
+}
+
+"""Encapsulates details for a given product addition request."""
+type ProductAddition {
+  """The requestId of the product addition request in need of remediation. This id would've been returned from the productAddition.submit mutation."""
+  requestId: ID!
+  """The supplierId associated with this product addition request."""
+  supplierId: ID!
+  """The supplierPartNumber associated with this product addition request."""
+  supplierPartNumber: String
+  """The classId associated with this product addition request. It determined which class specific questions were presented for answering during the product addition process."""
+  classId: Int!
+  """The market context for which the product should be listed under."""
+  marketContext: MarketContext
+  """The partId associated with this product addition request. No longer supported"""
+  partId: Int
+  """The partType associated with this product addition request. No longer supported"""
+  partType: Int
+  """The current status the associated product addition request. Refer to the syndication documentation for the order of progression."""
+  status: ProductAdditionStatus!
+  """The success or failure status of the validation step for this product addition process."""
+  validationStatus: OperationStatus
+  """The success or failure status of the submission step for this product addition process."""
+  submissionStatus: OperationStatus
+  """An array of validation flaws in need of remediation. Successfully remediated flaws will be removed from this array. The number of flaws must be reduced to zero before the addition process for this product is allowed to resume."""
+  validationFlaws: [ValidationFlaw]
+}
+
+"""Encapsulates details for a given product addition question."""
+type ProductAdditionQuestion {
+  """The question id, referred to as questionId in other areas of the production addition API."""
+  id: String!
+  """The question's parentId, if it is a child question. No longer supported"""
+  parentId: String
+  """The question's "internal" name. Suitable for use as a variable name in a programming language. No longer supported"""
+  internalName: String!
+  """The question's human-readable name. Suitable for display on a UI as a field label."""
+  displayName: String!
+  """The question's answer type."""
+  answerType: QuestionAnswerType
+  """Whether the question is active."""
+  isActive: Boolean!
+  """Whether the question is multi-valued."""
+  isMultiValue: Boolean!
+  """An array of child questions. When applicable, the parent question is considered a container question, so no need to directly answer it."""
+  childQuestions: [ProductAdditionQuestion!]!
+  """An array of allowable answers for this question, if applicable, when the answerType is suffixed with "_CHOICE"."""
+  possibleAnswers: [PossibleAnswer!]!
+  """A type which designates the question as optional, required, or conditional."""
+  importanceType: QuestionImportanceType
+  """Whether the question is eligible for being not applicable."""
+  isNotApplicableEligible: Boolean
+  """Whether the question is eligible for being unavailable."""
+  isUnavailableEligible: Boolean
+  description: String
+  """Whether the question is eligible to be assigned a custom enum value (if applicable)."""
+  isCustomEligible: Boolean
+}
+
+"""Statuses for the product addition submission. Refer to the syndication documentation for the order of progression."""
+enum ProductAdditionStatus {
+  VALIDATING
+  VALIDATED
+  SUBMITTING
+  SUBMITTED
+  PROCESSING
+  """Not currently supported"""
+  LIVE
+}
+
+"""Product descriptions are shared at the group level (SKU) within Wayfair."""
+input ProductDescriptionInput {
+  """The set of supplier part numbers that should have the same marketing copy and feature bullet changes applied. It is important to note that descriptions are not defined at the supplier part number and instead are applied at the internal grouping (SKU) level. Therefore, the parts specified below may affect one or more groups which could affect more parts than are provided in the set. It is also important to know that parts can be included in multiple groups. Here are examples of expected behaviors: Given group SKU_1 has PART_1 and PART_2 and only PART_1 was provided then descriptions on site would also apply to PART_2. Given PART_1 belongs to both group SKU_1 and SKU_2 then updates to PART_1 would apply the description to both SKU_1 and SKU_2 on site."""
+  supplierPartNumbers: [String!]!
+  """The marketing copy that describes the product details. If an empty string or null value is provided then: At least three feature bullets are required for the product Any existing marketing copy will be removed"""
+  marketingCopy: String
+  """The feature bullets for the product in the order that should be displayed on site. If an empty list or null value is provided then: The marketing copy is required for the product Any existing feature bullets will be removed If the set of bullets is less than three then: The marketing copy is required for the product Any feature bullet that exists but is not in the set provided will be removed If the set of bullets has three or more then: Any feature bullet that exists but is not in the set provided will be removed"""
+  featureBullets: [String!]
+}
+
+"""An association of partId to answered questions for the given part."""
+input ProductPartWithAnswers {
+  """Optional ManufacturerId that corresponds to a manufacturer brand. You can provide this instead of answering the 'core::manufacturerId' question. Note: Both ManufacturerId and ManufacturerName cannot be provided, only one of them can be provided at a time."""
+  manufacturerId: ID
+  """Optional ManufacturerName that corresponds to a manufacturer brand. You can provide this instead of giving an input for the ManufacturerId. Note: Both ManufacturerId and ManufacturerName cannot be provided, only one of them can be provided at a time."""
+  manufacturerName: String
+  """The part number that represents the supplier's product. You can provide this in place of answering the 'core::supplierPartNumber' question"""
+  supplierPartNumber: String
+  """An array of answers to given questions, as identified by the question's id."""
+  answers: [Answer!]!
+  """After the product addition request is accepted, it is submitted for validation. This validation process may result in validation flaws, which will need manual correction using our remediation mutation. Flaws can be of type ERROR or WARNING, remediation is required for the former and optional for the latter. If validation yields only flaws of type WARNING, setting this flag to "true" causes this part addition request to proceed despite warnings. Otherwise, warnings will need to be manually remediated. This flag overrides the same one set at the SubmitProductAdditionsRequest object level. If not provided, defaults to false."""
+  ignoreWarnings: Boolean
+  """You can provide this in place of answering the 'core::amazonStandardIdentificationNumber' question"""
+  amazonStandardIdentificationNumber: String
+  """You can provide this in place of answering the 'core::collectionName' question"""
+  collectionName: String
+  """You can provide this in place of answering the 'core::manufacturerPartNumber' question"""
+  manufacturerPartNumber: String
+  """You can provide this in place of answering the 'core::manufacturerProductUrl' question"""
+  manufacturerProductUrl: String
+  """You can provide this in place of answering the 'core::productName' question"""
+  productName: String
+  """You can provide this in place of answering the 'core::universalProductCode' question"""
+  universalProductCode: String
+  """You can provide this in place of answering the 'featureDescription::genericFeatures' question"""
+  featureBullets: [String!]
+  """All the media that is related to the new product being added."""
+  media: MediaInput
+  """You can provide this in place of answering the 'featureDescription::romanceCopy' question"""
+  marketingCopy: String
+}
+
+"""Status of the product description update."""
+enum ProductUpdateDescriptionStatus {
+  """Update for the requested transaction ID was not found"""
+  UNKNOWN
+  """Update has been received."""
+  RECEIVED
+  """Update is currently being processed."""
+  PROCESSING
+  """Update was rejected."""
+  REJECTED
+  """Update has completed processing."""
+  PROCESSED
+}
+
+"""Allowed data types for product addition question answers."""
+enum QuestionAnswerType {
+  DECIMAL
+  BOOLEAN
+  SINGLE_CHOICE
+  INTEGER
+  MULTI_CHOICE
+  STRING
+  ENUM
+}
+
+"""Possible types for question importance."""
+enum QuestionImportanceType {
+  """Designates a question as being optional, for product addition purposes."""
+  OPTIONAL
+  """Designates a question as being required, for product addition purposes."""
+  REQUIRED
+  """Denotes the correctness of the response to this question as being dependent on another question."""
+  CONDITIONAL
+  """Designates a question as being recommended, for product addition purposes."""
+  RECOMMENDED
+}
+
+type SkuMarketDescription {
+  """The market context associated with this product description."""
+  marketContext: MarketContext!
+  """Indicates whether the marketing copy and feature bullets for this marketing context can be updated"""
+  isDescriptionUpdatable: Boolean!
+  """The marketing copy associated with the SKU"""
+  marketingCopy: String
+  """The list of feature bullets associated with the SKU"""
+  featureBullets: [String!]
+}
+
+"""Input required to get the status of a request to update catalog entities (items, item groups)"""
+input StatusOfUpdateRequestInput {
+  """The requestId of the update operation whose status is being queried"""
+  requestId: String!
+  """The supplier ID that fulfills the catalog entity being updated"""
+  supplierId: String!
+}
+
+"""Encapsulates details for a given product addition submission request."""
+input SubmitProductAdditionRequest {
+  """The classId associated with this product addition request. It determined which class specific questions were presented for answering during the product addition process."""
+  classId: Int!
+  """The market context associated with this product."""
+  marketContext: MarketContextInput
+  """An array of associations of partIds to answered questions for this product addition request. A maximum of 100 products (ProductPartWithAnswers) are allowed."""
+  parts: [ProductPartWithAnswers!]!
+}
+
+"""Encapsulates required and optional inputs for submitting product addition requests."""
+input SubmitProductAdditionsRequest {
+  """The supplierId. All proposed product additions will be associated with this supplierId."""
+  supplierId: ID!
+  """An array of product addition requests. A maximum of 100 products (proposedProductAdditions) are allowed."""
+  proposedProductAdditions: [SubmitProductAdditionRequest!]!
+  """After the product addition request is accepted, it is submitted for validation. This validation process may result in validation flaws, which will need manual correction using our remediation mutation. Flaws can be of type ERROR or WARNING, remediation is required for the former and optional for the latter. If validation yields only flaws of type WARNING, setting this flag to "true" causes ALL addition requests to proceed despite warnings. Otherwise, warnings will need to be manually remediated. This flag can also be set for each individual ProductPartWithAnswers object, which effectively overrides it at this level. If not provided, defaults to false."""
+  ignoreWarnings: Boolean = false
+  """If true then when one product part encounters errors the entire request will be rejected so that the issues can be corrected so that products can be sent together as a bundle. This is important so that product parts that are variants of each other can be properly grouped together and not be split apart."""
+  rejectAllOnErrors: Boolean = false
+}
+
+"""Encapsulates the response details for a given SubmitProductAdditionsRequest."""
+type SubmitProductAdditionsResponse {
+  """Array of requestIds. Store them in your system, then input them into the productAddition.submissions query for status updates or errors."""
+  requestIds: [ID!]!
+}
+
+"""Brand details associated with a supplier."""
+type SupplierBrandAssociation {
+  """The unique identifier for the supplier brand."""
+  id: ID!
+  """The manufacturer associated with this brand."""
+  manufacturer: Manufacturer!
+}
+
+"""Encapsulates pageInfo details."""
+type SupplierBrandPageInfo {
+  """hasNextPage, true if there is one."""
+  hasNextPage: Boolean!
+  """hasPreviousPage, true if there is one."""
+  hasPreviousPage: Boolean!
+  """totalPages, the total number of pages."""
+  totalPages: Int!
+}
+
+"""Attributes define the properties (e.g. color, size) assigned to products in a given category (e.g. pillows). Each attribute will detail requirements for its value(s), such as whether they are required or optional, the data type it represents (e.g. string, integer), and any possible values that can be chosen from."""
+type TaxonomyAttribute {
+  """The ID of this attribute"""
+  taxonomyAttributeId: ID!
+  """The human readable name of this taxonomy attribute. Examples: Pillow Shape, Fabric Pattern, Battery Type"""
+  title: String!
+  """An explanation of what this attribute represents"""
+  description: String
+  """The market in which this attribute is relevant. Some attributes are only relevant in certain market contexts, i.e. attributes providing certifications such as California Prop 65"""
+  market: MarketContext
+  """Designates whether this attribute is required or not, and how important it is"""
+  requirement: TaxonomyAttributeRequirement!
+  """Information about the data type that is expected for this attribute's value(s)"""
+  valueFormat: TaxonomyAttributeValueFormat!
+  """Pre-defined possible values that can be provided for this attribute to describe the catalog entity. Notes: if the attribute's value is eligible for being set as not applicable, then "Does Not Apply" will be a value in this list. if the attribute's value is eligible for being marked as data is unavailable, then "Unavailable" will be a value in this list"""
+  possibleAttributeValues: [TaxonomyAttributePossibleValue]
+  """The parent attribute of this attribute"""
+  parentAttributeId: String
+  """Child attributes. Supports one level of nesting."""
+  childAttributes: [TaxonomyAttribute]
+  """The group of attributes that are related based on conditionality requirement rules. When updating a given attribute, you must also include all of the related attributes as part of the request. Example: Given a related attribute ID set of [1, 2, 3] when an update to ID 1 is requested, the existing values for 2 and 3 must also be included as part of the update."""
+  relatedAttributeIds: [String!]
+  """The list of categories that this taxonomy attribute is used for. A catalog entity must be in one of these categories in order for this attribute to be applied to it."""
+  taxonomyCategoryIds: [ID!]!
+}
+
+"""This type will be used if a taxonomy attribute is intended to provide measurement data about a catalog entity (i.e. weight, brightness, temperature, etc.)."""
+type TaxonomyAttributeMeasurement {
+  """The human-readable name of this measurement"""
+  measurementName: MeasurementName
+  """The unit type used to represent this measurement"""
+  measurementUnit: MeasurementUnit
+}
+
+"""Pre-defined possible values that can be provided for a taxonomy attribute to describe a catalog entity."""
+type TaxonomyAttributePossibleValue {
+  """The actual value that can be provided for a taxonomy attribute to help describe a catalog entity. Example: For taxonomy attribute Pillow Type, possible values could be "Round" or "Rectangular", etc."""
+  value: String!
+  """Explanation of what this possible value represents"""
+  definition: String
+}
+
+"""Indicates whether a taxonomy attribute is required for a catalog entity."""
+enum TaxonomyAttributeRequirement {
+  """The taxonomy attribute is optional."""
+  OPTIONAL
+  """The taxonomy attribute is required."""
+  REQUIRED
+  """The taxonomy attribute is not required, but recommended."""
+  RECOMMENDED
+}
+
+"""Allowed data types for assigning values to taxonomy attributes."""
+enum TaxonomyAttributeValueDatatype {
+  """True or False"""
+  BOOLEAN
+  """A single word"""
+  STRING
+  """Integer"""
+  INTEGER
+  """Floating point number"""
+  DECIMAL
+  """Single selection only"""
+  SINGLE_CHOICE
+  """Multiple options can be selected"""
+  MULTI_CHOICE
+}
+
+"""Information about the expected data type and structure of taxonomy attribute values"""
+type TaxonomyAttributeValueFormat {
+  """Indicates whether the value can be a custom value not listed under possible attribute values."""
+  canValueBeCustomized: Boolean
+  """Indicates whether the value can be set to Unavailable in cases where the supplier did not get this information from the manufacturer. If true, the possible values list will include "Unavailable" """
+  canValueBeSetToUnavailable: Boolean
+  """Indicates whether the value can be set to Does Not Apply (N/A) in cases where the attribute is not relevant. If true, the possible values list will include "Does Not Apply" """
+  canValueBeSetToNotApplicable: Boolean
+  """When a string value is provided for this taxonomy attribute, it will be converted to this type in our system; therefore, the provided string must be convertible to this data type (unless the selected value is "Does Not Apply" or "Unavailable")."""
+  datatype: TaxonomyAttributeValueDatatype
+  """Will be used when the attribute is intended to provide information about a given measurement, for example: Weight = 10 kg"""
+  measurement: TaxonomyAttributeMeasurement
+}
+
+"""Page representing taxonomy categories"""
+type TaxonomyCategoriesResult {
+  """Meta information about pagination"""
+  pageInfo: PaginationInfo
+  """List of taxonomy categories being returned"""
+  taxonomyCategories: [TaxonomyCategory!]!
+}
+
+"""Taxonomy categories group similar products sold together on the Wayfair main site and specialty retail brand sites (such as AllModern, Birch Lane, etc.)."""
+type TaxonomyCategory {
+  """Identifies the taxonomy category"""
+  taxonomyCategoryId: ID!
+  """The name of this taxonomy category"""
+  name: String
+}
+
+"""Used to indicate how and which attribute of the catalog entity to update"""
+input UpdateAttributeInput {
+  """The attribute ID for which a new value is being set (formerly called Question Id)"""
+  attributeId: String!
+  """The new value of the attribute."""
+  value: [String!]!
+}
+
+"""When requesting an update to a catalog item or item group, a response containing a request ID will be sent. This request ID can be used with the statusOfUpdateRequest query to check the status of the update request"""
+type UpdateCatalogEntityResponse {
+  """The ID representing the update change request"""
+  requestId: String!
+}
+
+"""Attributes for updating a catalog item"""
+input UpdateCatalogEntityTaxonomyAttributesInput {
+  """All attribute updates for the item"""
+  updates: [UpdateAttributeInput!]!
+  """Indicates that attribute values will be updated regardless of whether any validation warnings exist. Validation errors will still prevent the update."""
+  ignoreWarnings: Boolean = false
+  """When set to true, upon saving, any blank values will first be auto-populated if possible, then validated, then saved."""
+  enableAutofill: Boolean = false
+  taxonomyCategoryId: String!
+}
+
+"""The catalog item group to update and the changes being requested"""
+input UpdateCatalogItemGroupInput {
+  """The ID of the catalog item group to update"""
+  itemGroupId: String!
+  """Optional input: The new name for this catalog item group"""
+  itemGroupName: String
+  """Optional input: The new marketing copy for this catalog item group"""
+  marketingCopy: String
+  """Optional input: The new feature bullets for this catalog item group"""
+  featureBullets: [String!]
+}
+
+"""The catalog item to update and the changes being requested"""
+input UpdateCatalogItemInput {
+  """The ID of the catalog item to update"""
+  supplierPartNumber: String!
+  """Optional input: The new name for this catalog item"""
+  itemName: String
+  """Optional input: The new taxonomy attribute values for this catalog item"""
+  attributes: UpdateCatalogEntityTaxonomyAttributesInput
+}
+
+input UpdateCatalogItemMediaInput {
+  """The supplier part number that identifies the catalog item."""
+  supplierPartNumber: String!
+  """The public URL where the media is accessible. This is used for uploading new media and identifying existing media to which operations should be applied."""
+  mediaUrl: Url!
+  """The media type."""
+  mediaType: MediaType!
+  """This is optional for media of type image that already exists and meets the hero image eligibility criteria. If this field is set to true for a new image that is not in our system, the override will be ignored. If the image is already in our system and has met the hero eligibility requirements, setting this to true will override the default behavior of Wayfair selecting which hero image to display, forcing this image to always be the displayed hero image. If set to false, any previous overrides will be removed and hero image selection will revert to Wayfair's default hero image selection behavior."""
+  leadImageOverride: Boolean
+}
+
+"""Input required to update catalog item media"""
+input UpdateCatalogItemsMediaInput {
+  """The supplier ID that fulfills these catalog items"""
+  supplierId: String!
+  """The media changes being requested and for which catalog items"""
+  catalogItemsToUpdate: [UpdateCatalogItemMediaInput!]!
+  """When set to true, validates the input changes but does not actually perform the update itself. When set to false, validation will still run, and for any successful validations, the update will be performed."""
+  validateOnly: Boolean!
+}
+
+"""Input required to update catalog item groups for a specific market"""
+input UpdateMarketSpecificCatalogItemGroupsInput {
+  """The supplier ID that fulfills these item groups"""
+  supplierId: String!
+  """The market context in which catalog item groups will be updated"""
+  marketContext: MarketContextInput!
+  """The actual changes being requested and for which catalog item groups"""
+  catalogItemGroupsToUpdate: [UpdateCatalogItemGroupInput!]!
+  """When set to true, validates the input changes but does not actually perform the update itself. When set to false, validation will still run, and for any successful validations, the update will be performed."""
+  validateOnly: Boolean!
+}
+
+"""Input required to update catalog items for a specific market"""
+input UpdateMarketSpecificCatalogItemsInput {
+  """The supplier ID that fulfills these catalog items"""
+  supplierId: String!
+  """The market context in which items will be updated"""
+  marketContext: MarketContextInput!
+  """The actual changes being requested and for which catalog items"""
+  catalogItemsToUpdate: [UpdateCatalogItemInput!]!
+  """When set to true, validates the input changes but does not actually perform the update itself. When set to false, validation will still run, and for any successful validations, the update will be performed."""
+  validateOnly: Boolean!
+}
+
+type UpdateProductDescriptionDuplicateSkuUpdate {
+  """The SKU to which multiple supplier part numbers map"""
+  skus: [String!]!
+  """The set of supplier part numbers that map to the associated SKU"""
+  supplierPartNumbers: [String!]!
+}
+
+type UpdateProductDescriptionError {
+  """Index corresponding to the position of the requested update (starting from 1)"""
+  index: Int!
+  """Code identifying the error type Example: CAT-UPDPRDDESC-400 (validation warning), CAT-UPDPRDDESC-500 (internal server error)"""
+  code: String!
+  """Friendly message describing the error encountered"""
+  message: String!
+  """Errors encountered when submitting part number updates that map to the same SKU"""
+  duplicateSkuUpdate: UpdateProductDescriptionDuplicateSkuUpdate
+}
+
+type UpdateProductDescriptionGroupError {
+  """Code identifying the error type Example: CAT-UPDPRDDESC-400 (validation warning), CAT-UPDPRDDESC-500 (internal server error)"""
+  code: String!
+  """Friendly message describing the error encountered"""
+  message: String!
+}
+
+type UpdateProductDescriptionGroupResponse {
+  """The SKU name representing the grouping of supplier parts that were updated"""
+  sku: String!
+  """The supplier parts in the group that were updated"""
+  supplierPartNumbers: [String!]!
+  """The action taken related to the product group change request"""
+  result: UpdateProductDescriptionGroupResult!
+  """Errors encountered when the update result fails"""
+  errors: [UpdateProductDescriptionGroupError]!
+}
+
+"""Results related to product group updates."""
+enum UpdateProductDescriptionGroupResult {
+  """Update was skipped because the description is already in the desired state"""
+  SKIPPED
+  """Update was successfully applied"""
+  SUCCESS
+  """Update application failed"""
+  FAILED
+}
+
+"""Updates that can be applied in bulk."""
+input UpdateProductDescriptionInput {
+  """The supplier ID that the update targets."""
+  supplierId: Int!
+  """The marketContext associated with this product."""
+  marketContext: MarketContextInput!
+  """The updates that will be applied, with no guarantee of the order of execution for each."""
+  updates: [ProductDescriptionInput!]!
+}
+
+type UpdateProductDescriptionResponse {
+  """The transaction ID that can be associated with the initial request."""
+  transactionId: String!
+  """Indicates whether the update was successfully received. If true, the status details of the transaction can be queried via the transaction ID. If false, any additional error details will be provided."""
+  success: Boolean!
+  """Errors encountered when the update was not successfully received upon submission."""
+  errors: [UpdateProductDescriptionError]!
+}
+
+input UpdateProductDescriptionStatusRequest {
+  """The supplier ID that the update targets."""
+  supplierId: Int!
+  """The transaction ID associated with the update."""
+  transactionId: String!
+}
+
+type UpdateProductDescriptionStatusResponse {
+  """The transaction ID that can be associated with the update."""
+  transactionId: String!
+  """The current status of the associated product update description request. During the update request, if any basic validation rules are violated, the status will initially be set to RECEIVED state or REJECTED state. From the RECEIVED state, as updates are attempted, it will transition to the PROCESSING state. If any business rules are violated, the entire update will terminate and the status will be set to REJECTED. Otherwise, from the PROCESSING state, it will transition to the final PROCESSED state, and result details will be provided in the update group response."""
+  status: ProductUpdateDescriptionStatus!
+  """Groups that have been updated when the request is in PROCESSED state."""
+  updatedGroups: [UpdateProductDescriptionGroupResponse!]!
+  """Errors encountered when the update is in REJECTED state."""
+  errors: [UpdateProductDescriptionError]!
+}
+
+"""Represents the status of the update request."""
+type UpdateRequestStatus {
+  """Unique identifier of the requested update operation"""
+  requestId: String!
+  """If true, indicates that no update occurred; only input was validated, and allSucceeded refers to validation success."""
+  validationOnly: Boolean!
+  """Status of the catalog item groups being requested"""
+  status: CatalogEntityUpdateStatus!
+  """Any handled errors that occurred during this update will be listed here. Note that a single catalog entity may have multiple problems. If all succeeded, this will be empty."""
+  problems: [CatalogEntityUpdateProblem!]!
+  """List of catalog entities that were successfully updated"""
+  successfulUpdates: [CatalogEntitySuccessfulUpdate]
+}
+
+"""Upstream condition。"""
+type UpstreamCondition {
+  """Question token."""
+  taxonomyAttributeId: String!
+  """Upstream operation, such as equals, contains, does not contain, etc."""
+  operation: UpstreamOperation!
+  """The answer value in string form."""
+  answers: [String]!
+}
+
+"""Possible upstream operation types."""
+enum UpstreamOperation {
+  EQUALS
+  CONTAINS
+  DOES_NOT_CONTAIN
+}
+
+"""URL scalar. Uses the string graphql scalar type. Used to ensure returned links are valid and navigable"""
+scalar Url
+
+"""Collection of validation flaw details for a given product addition answer."""
+type ValidationFlaw {
+  """The partId. No longer supported"""
+  partId: Int
+  """The questionId, returned from the productAddition.questions query."""
+  questionId: String!
+  """Applicable when providing multiple answers for a multi-value question (i.e., isMultiValue == true). Set the first answer to number 1, then increment for subsequent answers. Can be used in conjunction with rank."""
+  parentRank: Int
+  """Applicable when providing multiple answers for a multi-choice question (i.e., QuestionAnswerType == MULTI_CHOICE). Set the first answer to number 1, then increment for subsequent answers. Can be used in conjunction with parentRank."""
+  rank: Int
+  """flawType。"""
+  flawType: ValidationFlawType!
+  """Human-readable description of validation flaws, with tips on how to fix them."""
+  flaw: String!
+}
+
+"""The type of validation flaw. Errors must be remediated, while warnings may be remediated."""
+enum ValidationFlawType {
+  ERROR
+  WARNING
+}

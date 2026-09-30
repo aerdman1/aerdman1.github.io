@@ -1,0 +1,588 @@
+# Dropship Orders API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/orders-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.com/v1/graphql
+# Not produced by introspection: verify against the live API before publishing.
+# Corrected 2026-09-30 against the API Playground's own operations (fix_schemas.py):
+#   Mutation.purchaseOrders -> PurchaseOrderMutations { accept, shipment }
+
+type Query {
+  """Retrieves Dropship purchase orders."""
+  getDropshipPurchaseOrders(
+    """The maximum number of results to return. If a limit is set and the result set contains more items than the limit, then a subset of the results with a count equal to limit will be returned. If no limit is set, the default is 10."""
+    limit: Int32 = 10
+    """Use hasResponse = false to view open purchase orders and hasResponse = true to view acknowledged purchase orders"""
+    hasResponse: Boolean
+    """The Purchase Order starting date period. Specifies the starting date from which to grab purchase orders"""
+    fromDate: IsoDateTime
+    """The list of Purchase Order numbers to return"""
+    poNumbers: [String]
+    """Order the result set by ascending or descending order of poDate."""
+    sortOrder: SortOrder = ASC
+  ): [PurchaseOrder_v2]
+}
+
+type Mutation {
+  """Dropship purchase order mutations."""
+  purchaseOrders: PurchaseOrderMutations
+}
+
+"""Dropship purchase order mutations. Reached as `mutation { purchaseOrders { … } }`."""
+type PurchaseOrderMutations {
+  """Accept some products in a purchase order."""
+  accept(
+    """The id of the purchase order from which you are accepting items"""
+    poNumber: String!
+    """The purchase order's ship speed"""
+    shipSpeed: ShipSpeed!
+    """The line items that are being accepted"""
+    lineItems: [AcceptedLineItemInput!]!
+  ): TransactionStatus!
+  """Send Wayfair an Advanced Shipment Notification (ASN) that items in a purchase order have shipped. This mutation notifies Wayfair that you have shipped items, enabling us to update customer tracking information. We expect that all items listed have been physically shipped and tracking numbers are valid and active with the specified carrier."""
+  shipment(
+    """Information about the shipment that is being made"""
+    notice: ShipNoticeInput!
+  ): TransactionStatus
+}
+
+"""An input for an accepted purchase order line item"""
+input AcceptedLineItemInput {
+  """The part number of the item being accepted"""
+  partNumber: String!
+  """The number of this item that are being accepted"""
+  quantity: Int32!
+  """The item's unit price"""
+  unitPrice: Float!
+  """The item's estimated ship date"""
+  estimatedShipDate: IsoDateTime!
+}
+
+"""An address"""
+type Address {
+  """The name of a person for this address"""
+  name: String
+  """The street address"""
+  address1: String
+  """The secondary street address field"""
+  address2: String
+  """The tertiary street address field"""
+  address3: String
+  """The city"""
+  city: String
+  """The state or province"""
+  state: String
+  """The country"""
+  country: String
+  """The postal code"""
+  postalCode: String
+  """The phone number to reach the address"""
+  phoneNumber: String
+}
+
+"""An address"""
+input AddressInput {
+  """The name of the residence"""
+  name: String!
+  """Primary street address information"""
+  streetAddress1: String!
+  """Secondary street address information"""
+  streetAddress2: String
+  """The city"""
+  city: String!
+  """The state or province"""
+  state: String
+  """The postal code"""
+  postalCode: String
+  """The country code"""
+  country: String!
+}
+
+"""A transportation agent"""
+type Agent {
+  """The identifier for this agent"""
+  id: ID!
+  """The name of the agent"""
+  name: String
+}
+
+"""Billing information"""
+type BillingInfo {
+  """The VAT number"""
+  vatNumber: String
+}
+
+"""Represents the currency id of the supplier"""
+enum ExtranetCurrency {
+  """US dollars"""
+  USD
+  """British pounds"""
+  GBP
+  """Euros"""
+  EUR
+  """Canadian dollars"""
+  CAD
+  """Australian dollars"""
+  AUD
+}
+
+"""The Int32 scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1"""
+scalar Int32
+
+"""A date and time in the ISO 8601 format."""
+scalar IsoDateTime
+
+"""The status of a single record in a transaction"""
+type ItemStatus {
+  """The identifier of this item"""
+  key: String
+  """A message describing the status of the message"""
+  message: String
+}
+
+"""A large parcel item and the packages it is split into"""
+input LargeParcelShipmentInput {
+  """The part number of the item being shipped large parcel"""
+  partNumber: String!
+  """The packages that the large parcel item is being sent in"""
+  packages: [PurchaseOrderPackageInput!]!
+}
+
+"""A tracking code that will go on a package including the type and the value"""
+input PackageTrackingCode {
+  """The type of tracking code this is"""
+  type: PackageTrackingCodeTypeEnum!
+  """The value of the tracking code"""
+  value: String!
+}
+
+"""Types of package tracking codes"""
+enum PackageTrackingCodeTypeEnum {
+  """A simple package tracking number"""
+  TRACKING_NUMBER
+  """A UCC-128 code"""
+  UCC_128
+}
+
+"""The PositiveInt scalar type represents non-fractional signed whole numeric values. PositiveInt can represent values between 1 and 2^31 - 1 inclusive"""
+scalar PositiveInt
+
+"""A package that a purchase order or part of a purchase order is shipped in"""
+input PurchaseOrderPackageInput {
+  """The tracking code for the package"""
+  code: PackageTrackingCode!
+  """The total weight of the package"""
+  weight: Float
+}
+
+"""A purchase order product"""
+type PurchaseOrderProduct {
+  """The part number of the product"""
+  partNumber: String
+  """The quantity of the product that the customer ordered"""
+  quantity: String
+  """The price the customer ordered the product for"""
+  price: Float
+  """The number of pieces in the product"""
+  pieceCount: Int
+  """The total cost of the product"""
+  totalCost: Float
+  """The name of the product"""
+  name: String
+  """How much the product weighs"""
+  weight: Float
+  """How much the total product set weighs"""
+  totalWeight: Float
+  """Estimated ship date"""
+  estShipDate: String
+  """Order product estimated fill date"""
+  fillDate: String
+  """SKU number of this product"""
+  sku: String
+  """Whether or not this purchase order line item has been cancelled"""
+  isCancelled: Boolean!
+  """Specifies whether regulated composite wood products and finished goods containing composite wood products, manufactured in or imported into the United States, are certified as compliant with the TSCA Title VI or the California Air Resources Board (CARB) Airborne Toxic Control Measures (ATCM) Phase II emission standards"""
+  isTscaCompliant: Boolean
+  """Whether or not this product was ordered with a two day guarantee"""
+  twoDayGuaranteeDeliveryDeadline: IsoDateTime
+  """The sales event that the purchase order was made in"""
+  event: SalesEvent
+  """Customization data for this product (monogram, name, other text, etc)"""
+  customComment: String
+}
+
+"""Shipping information related to a purchase order"""
+type PurchaseOrderShipping {
+  """The class of the speed the order needs to be shipped with"""
+  shipSpeed: ShipSpeed
+  """The carrier code for the shipment"""
+  carrierCode: String
+  """The pool point agent for the delivery"""
+  poolPointAgent: Agent
+  """The cross dock agent for the delivery"""
+  crossDockAgent: Agent
+  """The delivery agent for the order"""
+  deliveryAgent: Agent
+}
+
+"""Represents information related to purchase orders"""
+type PurchaseOrder_v2 {
+  """The purchase order's ID"""
+  id: Int
+  """The PO store prefix"""
+  storePrefix: String
+  """The PO number that identifies the purchase order"""
+  poNumber: String
+  """The date the purchase order was created"""
+  poDate: IsoDateTime
+  """The ID represents customer facing order number"""
+  orderId: Int
+  """The id of the purchase order's supplier. Please see the supplier field for supplier information."""
+  supplierId: Int
+  """The name of the supplier the purchase order is for. Please see the supplier field for supplier information."""
+  supplierName: String
+  """The first address of the supplier. Please see the supplier field for supplier information."""
+  supplierAddress1: String
+  """The second address of the supplier. Please see the supplier field for supplier information."""
+  supplierAddress2: String
+  """The third address of the supplier. Please see the supplier field for supplier information."""
+  supplierAddress3: String
+  """The city the supplier is located in. Please see the supplier field for supplier information."""
+  supplierCity: String
+  """The state the supplier is located in. Please see the supplier field for supplier information."""
+  supplierState: String
+  """The postal code of the area the supplier is located. Please see the supplier field for supplier information."""
+  supplierPostalCode: String
+  """The day the purchase order items are expected to ship"""
+  estimatedShipDate: IsoDateTime
+  """The day scheduled for the delivery of the purchase order"""
+  scheduledDeliveryDate: IsoDateTime
+  """The code representing the delivery method"""
+  deliveryMethodCode: String
+  """The name of the customer to deliver to"""
+  customerName: String
+  """The first address of the customer"""
+  customerAddress1: String
+  """The second address of the customer"""
+  customerAddress2: String
+  """The city of the customer's address"""
+  customerCity: String
+  """The state of the customer's address"""
+  customerState: String
+  """The postal code of the customer's address"""
+  customerPostalCode: String
+  """The country of the customer's address"""
+  customerCountry: String
+  """Customer email ID"""
+  customerEmail: String
+  """The sales channel this purchase order was made from"""
+  salesChannelName: String
+  """The type of order that was placed"""
+  orderType: String
+  """Information about how this purchase order should be shipped"""
+  shippingInfo: PurchaseOrderShipping
+  """The URL to download the packing slip for this purchase order"""
+  packingSlipUrl: String
+  """Load the supplier this purchase order is intended for"""
+  warehouse: Warehouse
+  """The list of products in the purchase order"""
+  products: [PurchaseOrderProduct]
+  """The address to ship this order to"""
+  shipTo: Address!
+  """The billing address of the order"""
+  billTo: Address!
+  """The billing information"""
+  billingInfo: BillingInfo
+}
+
+"""A sales event hosted on Wayfair's storefront websites"""
+type SalesEvent {
+  """The identifier for the sales event"""
+  id: ID!
+  """The type of the event"""
+  type: String
+  """The name of the event"""
+  name: String
+  """The date and time that the event started"""
+  startDate: IsoDateTime
+  """The date and time that the event ended"""
+  endDate: IsoDateTime
+}
+
+"""An API scope defining specific permissions for API access"""
+type Scope {
+  """The id of the scope"""
+  id: ID
+  """The name of the scope. E.g. Read Class Schema"""
+  name: String
+  """The action:Type formatted name of the scope. E.g. read:product_class"""
+  permissionName: String
+  """The permission description"""
+  description: String
+}
+
+"""A notice that a purchase order has shipped. This includes all necessary information about that shipment"""
+input ShipNoticeInput {
+  """The identifier for the purchase order that this notice is acknowledging shipment for"""
+  poNumber: String!
+  """The identifier of the supplier that is shipping this purchase order out"""
+  supplierId: ID!
+  """The total number of packages that are a part of this order"""
+  packageCount: PositiveInt!
+  """The total weight of all the packages in this purchase order in pounds"""
+  weight: Float
+  """The volume of all the packages in this purchase order in cubic feet"""
+  volume: Float
+  """The staandard carrier alpha code (SCAC)"""
+  carrierCode: String!
+  """The ship speed of this purchase order"""
+  shipSpeed: ShipSpeed!
+  """The tracking number of the order"""
+  trackingNumber: String!
+  """The date the order was shipped. Must be fewer than 10 days in the past and no more than 1 day in the future"""
+  shipDate: IsoDateTime!
+  """The address the order shipped from"""
+  sourceAddress: AddressInput!
+  """The address the order is shipping to"""
+  destinationAddress: AddressInput!
+  """A list of the small parcel packages that were shipped"""
+  smallParcelShipments: [SmallParcelShipmentInput!]
+  """A list of the large parcel items and their packages that were shipped"""
+  largeParcelShipments: [LargeParcelShipmentInput!]
+}
+
+"""The different ship speed delivery methods"""
+enum ShipSpeed {
+  """2nd Day Air Delivery"""
+  SECOND_DAY_AIR
+  """2-Day Delivery -- Free!"""
+  SECOND_DAY_AIR_FREE
+  """Global 5-Day Direct Delivery"""
+  FIVE_DAY_DIRECT
+  """3 Day Delivery"""
+  THREE_DAY
+  """Container"""
+  CONTAINER
+  """Zustellung per Email"""
+  EMAIL
+  """FedEx Home Delivery"""
+  FEDEX_HOME
+  """Small Parcel Courier"""
+  GROUND
+  """Small Parcel Courier"""
+  PAKETVERSAND
+  """Imperial Pool Freight"""
+  IMPERIAL_POOL_FREIGHT
+  """Next Day Air"""
+  NEXT_DAY
+  """Next Day Air (AK,HI,PR)"""
+  NEXT_DAY_OVERSEAS
+  """UK - SP - Next day before noon"""
+  NEXT_MORNING
+  """UK - SP - Next day before 9am"""
+  NEXT_DAY_BEFORE_NINE
+  """Will Call"""
+  WILL_CALL
+  """UK - SP - Saturday delivery"""
+  SATURDAY_DELIVERY
+  """Casket Delivery - 1 Day"""
+  TRUCK_FREIGHT_CASKETS_ONE_DAY
+  """Casket Delivery - 2 Day"""
+  TRUCK_FREIGHT_CASKETS_TWO_DAY
+  """Curbside with unload service"""
+  CURBSIDE_WITH_UNLOAD
+  """Truck Load"""
+  TRUCK_LOAD
+  """Curbside without unload service"""
+  CURBSIDE
+  """Spedition - frei Bordsteinkante"""
+  WHITE_GLOVE_BRONZE
+  """Room of Choice & Packaging Removal"""
+  WHITE_GLOVE_GOLD
+  """Premium 2-Man Delivery"""
+  WHITE_GLOVE_TWO_MAN
+  """Room of Choice Delivery with Installation"""
+  WHITE_GLOVE_PLATINUM
+  """Room of Choice"""
+  WHITE_GLOVE_SILVER
+  """Truck Freight - Threshold"""
+  TRUCK_FREIGHT_THRESHOLD
+  """Standard-Versand Sperrgut"""
+  STANDARD_VERSAND_SPERRGUT
+  """ALMO - Room of Choice + Removal of Old Appliance"""
+  ALMO
+  """Large Parcel Courier"""
+  LARGE_PARCEL_COURIER
+  """European Line Haul"""
+  EUROPEAN_LINE_HAUL
+  """Economy"""
+  ECONOMY
+  """White Glove Delivery - Room of Choice"""
+  WHITE_GLOVE_ROOM_OF_CHOICE
+  """Small Parcel"""
+  TINY_PARCEL
+  """GROUND (AK,HI,PR)"""
+  GROUND_OVERSEA
+  """Low Cost Carrier"""
+  LOW_COST_CARRIER
+  """Innovel Delivery Service"""
+  WHITE_GLOVE_INNOVEL
+  """Backyard Drop-Off"""
+  BACKYARD
+  """Curbside Delivery"""
+  CURBSIDE_DELIVERY
+  """Inside Delivery - Packaging Removal & Removal of Old Appliance"""
+  INSIDE_DELIVERY_PACKAGING_REMOVAL_REMOVAL_OF_OLD_APPLIANCE
+  """One Man Premium"""
+  ONE_MAN_PREMIUM
+  """Inside Delivery - Packaging Removal"""
+  INSIDE_DELIVERY_PACKAGING_REMOVAL
+  """Threshold Delivery"""
+  THRESHOLD_DELIVERY
+  """Large Parcel Courier"""
+  UK_1_MAN_48HRS
+  """Allied Road Express"""
+  ALLIED_ROAD_EXPRESS
+  """Hunter Road Express"""
+  HUNTER_ROAD_EXPRESS
+  """White Glove - Capital Cities"""
+  WHITE_GLOVE_CAPITAL_CITIES
+  """Spedition - frei Bordsteinkante"""
+  SPEDITION_FREI_BORDSTEINKANTE
+  """Large Parcel Courier"""
+  UK_1_MAN_LONG_DELIVERY
+  """In Home Mattress Set Up & Removal"""
+  IN_HOME_MATTRESS_SET_UP_REMOVAL
+  """Room of Choice Delivery w/ Installation"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_INSTALLATION
+  """Room of Choice Delivery w/ Installation & Haul Away"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_INSTALLATION_HAUL_AWAY
+  """Room of Choice Delivery w/ Haul Away"""
+  WHITE_GLOVE_DELIVERY_ROOM_OF_CHOICE_W_HAUL_AWAY
+  """Room of Choice Delivery w/ Move to Another Room"""
+  ROOM_OF_CHOICE_DELIVERY_W_MOVE_TO_ANOTHER_ROOM
+  """Room of Choice Delivery w/ Install & Move to Another Room"""
+  ROOM_OF_CHOICE_DELIVERY_W_INSTALL_MOVE_TO_ANOTHER_ROOM
+  """Room of Choice Delivery"""
+  GE_WG_DELIVERY
+  """Samsung Delivery Service"""
+  SAMSUNG_WG_DELIVERY
+  """Wayfair Large Appliances Delivery"""
+  WAYFAIR_LARGE_APPLIANCES_DELIVERY
+  """Off The Shelf Item"""
+  WAYFAIR_OFF_THE_SHELF
+}
+
+"""A line item that is shipped in a small parcel package"""
+input SmallParcelItemInput {
+  """The part number of the item"""
+  partNumber: String!
+  """The number of this item in the small parcel package"""
+  quantity: PositiveInt!
+}
+
+"""A small parcel package and the items in the package"""
+input SmallParcelShipmentInput {
+  """A small parcel package"""
+  package: PurchaseOrderPackageInput!
+  """A list of items that are in this small parcel package"""
+  items: [SmallParcelItemInput!]!
+}
+
+"""The values a result set can be sorted in"""
+enum SortOrder {
+  """Ascending order"""
+  ASC
+  """Descending order"""
+  DESC
+}
+
+"""A supplier entity"""
+type Supplier {
+  """The unique identifier for a supplier"""
+  id: ID
+  """The name of the supplier"""
+  name: String
+  """The shortened name of the supplier"""
+  shortName: String
+  """Status of supplier"""
+  status: SupplierStatus
+  """The web address of the supplier's site"""
+  websiteURL: String
+  """The currency id of the supplier"""
+  currency: ExtranetCurrency
+  """Load the scopes accessible to this supplier"""
+  scopes: [Scope]
+  """Load the child suppliers of this supplier"""
+  warehouses: [Warehouse!]
+}
+
+"""Represents the status of the supplier"""
+enum SupplierStatus {
+  """Active Status"""
+  ACTIVE
+  """Inactive Status"""
+  INACTIVE
+  """Being Added Status"""
+  BEING_ADDED
+  """On Hold Status"""
+  ON_HOLD
+}
+
+"""Current state of a transaction of transaction item"""
+enum TransactionState {
+  """A new item. Processing has not yet begun"""
+  NEW
+  """We are currently processing the item"""
+  PROCESSING
+  """An error occurred during processing"""
+  ERROR
+  """Processing completed without errors"""
+  COMPLETE
+}
+
+"""The status of a transaction made"""
+type TransactionStatus {
+  """The identifier for this transaction."""
+  id: String @deprecated(reason: "in favor of handle")
+  """The identifier for this transaction"""
+  handle: String
+  """The status of this transaction"""
+  status: TransactionState
+  """The date and time this transaction was submitted"""
+  submittedAt: String!
+  """The date and time this transaction was completed"""
+  completedAt: String
+  """The current count of transaction items for this transaction"""
+  itemCount: Int32
+  """The current count of errored transaction items for this transaction"""
+  errorCount: Int32
+  """A list of items with associated errors which have occurred during this transaction"""
+  errors(ordering: [orderingInput]): [ItemStatus]
+  """The current count of completed transaction items for this transaction"""
+  completedCount: Int32
+  """A list of items which have been completed during the transaction"""
+  completed(ordering: [orderingInput]): [ItemStatus]
+  """The current count of processing transaction items for this transaction"""
+  processingCount: Int32
+  """A list of items which are still processing"""
+  processing(ordering: [orderingInput]): [ItemStatus]
+}
+
+"""Information for a supplier warehouse"""
+type Warehouse {
+  """The id of the warehouse"""
+  id: ID
+  """The name of the warehouse"""
+  name: String
+  """The address of the warehouse"""
+  address: Address
+  """The company this warehouse belongs to"""
+  supplier: Supplier
+}
+
+"""Allows for ordering of elements"""
+input orderingInput {
+  """The ascending ordering. When a param is provided the result set will be ordered in ascending order according to the param provided"""
+  asc: String
+  """The descending ordering. When a param is provided the result set will be ordered in descending order according to the param provided"""
+  desc: String
+}

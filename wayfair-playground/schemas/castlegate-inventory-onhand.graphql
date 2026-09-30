@@ -1,0 +1,192 @@
+# Inventory Visibility API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/inventory-visibility-onhand-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """Retrieves a list of inventory positions summaries by supplier part"""
+  inventorySummaryList(
+    """Wayfair parent supplier identifier"""
+    supplierId: Int!
+    """Search filters, based on which fragment of dataset can be retrieved"""
+    filter: InventoryFilterInput
+    """Inventory page information, first and cursor"""
+    page: InventoryPageInput
+  ): InventorySummaryListCursorConnection!
+}
+
+"""Breakdown of the quantities that sum to InStock for CastleGate"""
+type CastleGateInStock {
+  """Inventory in storage racking that can be allocated to an order for a pick (not on hold or expired)"""
+  fulfillableQty: Int!
+  """Inventory that is not unpickable / not in the racks, is on transfer between FCs (e.g. IXD / IXF), or is on hold or expired"""
+  unfulfillableQty: Int!
+  """Breakdown of unfulfillable quantities"""
+  unfulfillable: CastleGateUnfulfillable
+}
+
+"""Breakdown of the quantities that sum to OnHand for CastleGate"""
+type CastleGateOnHand {
+  """CastleGate units on hand that are reserved for an order (including MultiChannel and RTVs) but have not yet shipped"""
+  allocatedQty: Int!
+  """Inventory quantity that has been cycle counted/adjusted out but is still within processing buffer time (30+ days) to prevent over-crediting"""
+  unreconciledQty: Int!
+  """CastleGate units that are on hand or on a transfer between Wayfair warehouses and are not reserved to fulfill an order or unreconciled (i.e. cycle counted out)"""
+  inStockQty: Int!
+  """Breakdown of CastleGate In Stock quantities"""
+  inStock: CastleGateInStock
+}
+
+"""CastleGate Inventory Position for a supplier part"""
+type CastleGatePosition {
+  """Total CastleGate on-hand quantity"""
+  onHandQty: Int!
+  """Breakdown of the CastleGate on-hand inventory position"""
+  onHand: CastleGateOnHand!
+  """Inventory positions at CastleGate warehouses"""
+  warehouses: [CastleGateWarehouse!]
+}
+
+"""Breakdown of the quantities that sum to unfulfillable for CastleGate"""
+type CastleGateUnfulfillable {
+  """Expired quantity such as boxed mattresses that have passed the age threshold for product quality"""
+  expiredQty: Int!
+  """Inventory on hold intentionally (e.g. legal reasons) or process (e.g. multibox imbalances, missing carton dimensions)"""
+  heldQty: Int!
+  """Inventory in locations that are not storage, e.g. receiving, staging, and other activities (e.g. QA, VAS)"""
+  unpickableQty: Int!
+  """Inventory on transfer after initial receipt at an FC, including all move types (IXD, IXF, etc.)"""
+  onTransferQty: Int!
+}
+
+"""Inventory positions at CastleGate warehouse"""
+type CastleGateWarehouse {
+  """Warehouse ID or Child Supplier ID known to the supplier"""
+  warehouseId: Int!
+  """CastleGate Warehouse on-hand quantity"""
+  onHandQty: Int!
+  """Breakdown of the CastleGate Warehouse's on-hand inventory position"""
+  onHand: CastleGateOnHand
+}
+
+"""A date-time string formatted according to RFC 3339 section 5.6 (e.g. '2020-12-25T23:59:59Z' in UTC or '2020-12-25T18:59:59-05:00' in EST)."""
+scalar DateTime
+
+"""Inventory search filters, based on which fragment of dataset can be retrieved"""
+input InventoryFilterInput {
+  """Supplier part identifiers unique to a supplier"""
+  supplierPartNumbers: [String!]
+  """Physical warehouse identifier where inventory is kept (AKA child supplierId for DropShip warehouses). If no parts are found at this warehouse, then the response will return an empty list in the edges field"""
+  warehouseId: Int
+}
+
+"""Information about pagination in a cursor-based connection"""
+type InventoryPageInfo {
+  """When paginating forward, are there more items?"""
+  hasNextPage: Boolean!
+  """When paginating forwards, the cursor to continue"""
+  endCursor: String
+}
+
+"""Inventory page information serving forward cursor-based pagination"""
+input InventoryPageInput {
+  """The number of desired edges after the "after" cursor, AKA max page size for forward pagination."""
+  first: Int = 50
+  """When paginating forwards, the cursor that appears before the desired edges."""
+  after: String
+}
+
+"""Object containing the inventory summary object and the cursor"""
+type InventoryPartEdge {
+  """Inventory Part Summary object"""
+  node: InventoryPartSummary!
+  """Cursor representing the edge, to be used for pagination"""
+  cursor: String!
+}
+
+type InventoryPartSummary {
+  """Manufacturer Part ID, the ID of the company that manufactures the item"""
+  manufacturerPartId: Long!
+  """Supplier Part Number, the identifier which a supplier assigns to a single, specific part that they sell"""
+  supplierPartNumber: String!
+  """SKU, Stock Keeping Unit is a generic reference to a type of item sold by a supplier through Wayfair"""
+  sku: String
+  """Product Name is the title used to describe a SKU"""
+  productName: String
+  """Product options, comma separated option combination categories and values"""
+  options: String
+  """Inventory positions detailing quantities and breakdowns for a supplier part"""
+  inventoryPosition: InventoryPosition!
+}
+
+"""Inventory position regarding a part."""
+type InventoryPosition {
+  """CastleGate Inventory position for a part"""
+  castleGate: CastleGatePosition
+  """Physical Retail Inventory position for a part"""
+  physicalRetail: PhysicalRetailPosition
+}
+
+"""Object containing a page information and a list of inventory part summaries"""
+type InventorySummaryListCursorConnection {
+  """Cursor-based page information"""
+  pageInfo: InventoryPageInfo!
+  """An edges array of type InventoryEdge"""
+  edges: [InventoryPartEdge!]!
+}
+
+scalar Long
+
+"""Breakdown of the quantities that sum to InStock for PhysicalRetail"""
+type PhysicalRetailInStock {
+  """Inventory in storage racking that can be allocated to an order for a pick (not on hold or expired)"""
+  fulfillableQty: Int!
+  """Inventory that is not unpickable / not in the racks, is on transfer between FCs (e.g. IXD / IXF), or is on hold or expired"""
+  unfulfillableQty: Int!
+  """Breakdown of unfulfillable quantities"""
+  unfulfillable: PhysicalRetailUnfulfillable
+}
+
+"""Breakdown of the quantities that sum to OnHand for PhysicalRetail"""
+type PhysicalRetailOnHand {
+  """Physical Retail units on hand that are reserved for an order (including MultiChannel and RTVs) but have not yet shipped"""
+  allocatedQty: Int!
+  """Inventory quantity that has been cycle counted/adjusted out but is still within processing buffer time (30+ days) to prevent over-crediting"""
+  unreconciledQty: Int!
+  """Physical Retail units that are on hand or on a transfer between Wayfair warehouses and are not reserved to fulfill an order or unreconciled (i.e. cycle counted out)"""
+  inStockQty: Int!
+  """Breakdown of Physical Retail In Stock quantities"""
+  inStock: PhysicalRetailInStock
+}
+
+"""Physical Retail Inventory Position for a supplier part"""
+type PhysicalRetailPosition {
+  """Total PhysicalRetail on-hand quantity"""
+  onHandQty: Int!
+  """Breakdown of the PhysicalRetail on-hand inventory position"""
+  onHand: PhysicalRetailOnHand!
+  """Inventory positions at PhysicalRetail warehouses"""
+  warehouses: [PhysicalRetailWarehouse!]
+}
+
+"""Breakdown of the quantities that sum to unfulfillable for PhysicalRetail"""
+type PhysicalRetailUnfulfillable {
+  """Expired quantity such as boxed mattresses that have passed the age threshold for product quality"""
+  expiredQty: Int!
+  """Inventory on hold intentionally (e.g. legal reasons) or process (e.g. multibox imbalances, missing carton dimensions)"""
+  heldQty: Int!
+  """Inventory in locations that are not storage, e.g. receiving, staging, and other activities (e.g. QA, VAS)"""
+  unpickableQty: Int!
+  """Inventory on transfer after initial receipt at an FC, including all move types (IXD, IXF, etc.)"""
+  onTransferQty: Int!
+}
+
+"""Inventory positions at PhysicalRetail warehouse"""
+type PhysicalRetailWarehouse {
+  """Warehouse ID or Child Supplier ID known to the supplier"""
+  warehouseId: Int!
+  """PhysicalRetail Warehouse on-hand quantity"""
+  onHandQty: Int!
+  """Breakdown of the PhysicalRetail Warehouse's on-hand inventory position"""
+  onHand: PhysicalRetailOnHand
+}

@@ -1,0 +1,151 @@
+# Order Cancellation API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/order-cancellation-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """Returns the line item cancellation requests for a given list of purchase orders."""
+  lineItemCancellationRequestByPurchaseOrders(
+    poInput: LineItemCancellationRequestByPurchaseOrdersInput!
+  ): [LineItemCancellationRequest!]!
+  """Returns the line item cancellation requests for a given list of warehouses."""
+  lineItemCancellationRequestByWarehouses(
+    warehouseInput: LineItemCancellationRequestByWarehousesInput!
+  ): [LineItemCancellationRequest!]!
+}
+
+type Mutation {
+  """Confirm line item cancellation requests."""
+  confirmLineItemCancellationRequest(
+    confirmationInputs: [ConfirmLineItemCancellationRequestInput!]!
+  ): [LineItemCancellationResponse!]!
+  """Reject line item cancellation requests."""
+  rejectLineItemCancellationRequest(
+    rejectionInputs: [RejectLineItemCancellationRequestInput!]!
+  ): [LineItemCancellationResponse!]!
+}
+
+"""The product."""
+type CancellationProduct {
+  """The product's part number."""
+  partNumber: String!
+  """The quantity adjustment due to cancellation."""
+  cancellationQuantity: CancellationQuantityAdjustment
+}
+
+"""The purchase order."""
+type CancellationPurchaseOrder {
+  """The purchase order's unique identifier."""
+  poNumber: String!
+  """The warehouse from which Wayfair expects the purchase order to be fulfilled."""
+  warehouse: CancellationSupplierWarehouse!
+}
+
+"""The quantity adjustment due to cancellation."""
+type CancellationQuantityAdjustment {
+  """The original quantity, prior to the cancellation."""
+  originalQuantity: Int!
+  """The cancelled quantity."""
+  cancelledQuantity: Int!
+}
+
+"""The reason the line item cancellation was requested."""
+type CancellationReason {
+  """The reason the line item cancellation was requested."""
+  reason: String!
+}
+
+"""The supplier warehouse."""
+type CancellationSupplierWarehouse {
+  """The supplier warehouse's unique identifier."""
+  warehouseId: Int!
+}
+
+"""The input type for confirming a line item cancellation request."""
+input ConfirmLineItemCancellationRequestInput {
+  """The line item cancellation request's unique identifier."""
+  requestId: ID!
+}
+
+"""A date-time string formatted according to RFC 3339 section 5.6 (e.g. '2020-12-25T23:59:59Z' in UTC or '2020-12-25T18:59:59-05:00' in EST)."""
+scalar DateTime
+
+"""The line item cancellation request which represents a request from Wayfair to cancel some quantity of a product in a purchase order."""
+type LineItemCancellationRequest {
+  """The line item cancellation request's unique identifier."""
+  requestId: ID!
+  """The status of the line item cancellation request."""
+  status: LineItemCancellationStatus!
+  """The datetime when the line item cancellation was requested."""
+  requestedAt: DateTime!
+  """The reason the line item cancellation was requested."""
+  cancellationReason: CancellationReason
+  """The purchase order that includes the cancelled line item."""
+  purchaseOrder: CancellationPurchaseOrder!
+  """The cancelled product."""
+  cancelledProduct: CancellationProduct!
+}
+
+"""The input type for retrieving line item cancellation requests by purchase orders."""
+input LineItemCancellationRequestByPurchaseOrdersInput {
+  """The purchase order numbers (e.g. 'AB123456789') for which to retrieve line item cancellation requests. Max 50 values allowed."""
+  poNumbers: [String!]!
+}
+
+"""The input type for retrieving line item cancellation requests by warehouses."""
+input LineItemCancellationRequestByWarehousesInput {
+  """The warehouse IDs for which to retrieve line item cancellation requests. Max 50 values allowed."""
+  warehouseIds: [Int!]!
+  """The status of the line item cancellation requests."""
+  status: LineItemCancellationRequestStatus!
+  """The earliest datetime of the line item cancellation requests."""
+  fromDatetime: DateTime
+  """The latest datetime of the line item cancellation requests."""
+  toDatetime: DateTime
+}
+
+"""The status of the line item cancellation request."""
+enum LineItemCancellationRequestStatus {
+  """The line item cancellation request has not been responded to by the supplier."""
+  CANCELLATION_PENDING_SUPPLIER_CONFIRMATION
+  """The line item has been successfully canceled."""
+  CANCELLED
+}
+
+"""The response to a line item cancellation request."""
+type LineItemCancellationResponse {
+  """The line item cancellation request's unique identifier."""
+  requestId: ID!
+  """The status of the line item cancellation response."""
+  status: LineItemCancellationResponseStatus!
+  """Error code."""
+  errorCode: Int
+  """Error Message."""
+  errorMessage: String
+}
+
+"""The status of the line item cancellation response."""
+enum LineItemCancellationResponseStatus {
+  """The line item cancellation response was processed successfully."""
+  SUCCESS
+  """The line item cancellation response was processed unsuccessfully."""
+  FAILURE
+}
+
+"""The status of the line item cancellation."""
+enum LineItemCancellationStatus {
+  """The cancellation request has not been responded to by the supplier."""
+  CANCELLATION_PENDING_SUPPLIER_CONFIRMATION
+  """The line item has been successfully canceled."""
+  CANCELLED
+  """The cancellation request has been rejected by the supplier."""
+  CANCELLATION_REJECTED
+}
+
+"""The input type for rejecting a line item cancellation request."""
+input RejectLineItemCancellationRequestInput {
+  """The line item cancellation request's unique identifier."""
+  requestId: ID!
+  """The reason for rejecting the line item cancellation request."""
+  reason: String!
+}

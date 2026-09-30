@@ -1,0 +1,483 @@
+# CastleGate Forwarding Container Milestones Supplier API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/inbound-order-shipment-milestone/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """The CGF Milestones API provides essential shipment milestone information regarding inventory in transit to or between CastleGate fulfillment centers."""
+  inboundOrderList(
+    """Wayfair parent supplier identifier"""
+    supplierId: Int!
+    """Status of the Inbound Orders"""
+    status: InboundOrderStatus!
+    """Search filters, based on which fragment of dataset can be retrieved."""
+    filters: InboundOrderFilterInput
+    """Inbound order page information, first and cursor"""
+    paginate: InboundOrderPageInput!
+    """Sort options for the list of inboundOrders."""
+    sorts: InboundOrderSortInput
+  ): InboundOrderResponse
+}
+
+"""Represents CGF logistics service"""
+enum CGFInboundOrderLogisticsService {
+  """Logistics service via Ocean"""
+  OCEAN
+  """Represents transportation of goods by truck"""
+  ORIGIN_TRUCKING
+  """Represents the short-distance transport of a container from the destination port or rail terminal to a nearby warehouse, distribution center, or final delivery point."""
+  DESTINATION_DRAY
+  """Represents combiniation of multiple smaller shipments into one larger shipment"""
+  CONSOLIDATION
+  """Represents where inbound goods are received at a destination cross-dock facility and are quickly sorted and transferred directly to outbound transportation with minimal or no storage"""
+  DESTINATION_X_DOCK
+  """Represents the short-distance trucking of a container or shipment from the origin location to the port or rail terminal"""
+  ORIGIN_DRAY
+  """Represents the transportation of goods by truck from the destination"""
+  DESTINATION_TRUCKING
+  """Represents the entry point containter inducted in logistics network or system"""
+  CG_INDUCTION
+  """Service is UNKNOWN or not available"""
+  UNKNOWN
+}
+
+"""Represents order shipments details"""
+type CGFInboundOrderShipment {
+  """Represents the shipment Id"""
+  shipmentId: String!
+  """Represents the receiving Id"""
+  receivingIds: [String]
+  """Master bill of lading - CGF and Ocean Carrier contract"""
+  masterBillOfLading: String
+  """House bills of lading - CGF and supplier contract"""
+  houseBillOfLading: String
+  """ID for equipment used to transport the goods"""
+  containerNumber: String
+  """Describes the size and type of the equipment"""
+  containerType: InboundShipmentEquipmentSize!
+  """List of shipment leg details"""
+  legStops: [CGFInboundOrderShipmentLegStop!]!
+  """The departure port code"""
+  originPortCode: String
+  """Represents the shipment or container is supposed to arrive."""
+  destinationPortCode: String
+  """Represents Shipment Tracking status"""
+  trackingStatus: InboundShipmentTrackingStatus!
+}
+
+"""Represents inbound order shipment journey details"""
+type CGFInboundOrderShipmentJourney {
+  """Represents Inbound order shipment journey type"""
+  type: InboundOrderShipmentJourneyType!
+  """Date and time without timezone."""
+  timestamp: DateTime!
+}
+
+"""Represents inbound order individual stops or points along the journey of a shipment leg"""
+type CGFInboundOrderShipmentLegStop {
+  """Represents shipment leg sequence"""
+  sequence: Int!
+  """It contains location details"""
+  location: Location!
+  """Represents shipment leg stop descriptor details"""
+  descriptor: InboundShipmentLegStopDescriptor!
+  """The ocean or road freight carrier is responsible for in the shipping of goods FBS Ocean & Dray orders will have 1 Ocean carrier and 1 Dray carrier."""
+  carrier: Company
+  """Represents the inbound order shipment managing party details."""
+  managingParty: InboundShipmentManagingParty
+  """Represents the inbound order shipment transport mode"""
+  transportMode: InboundShipmentTransportMode
+  """Represents the inbound order shipment leg trade type."""
+  tradeType: InboundShipmentLegTradeType
+  """Represents inbound order shipment leg stop milestones"""
+  milestones: [CGFInboundShipmentLegStopMilestone!]!
+  """Represents location Details"""
+  locationName: String!
+  """It's a milestone on the origin side where goods are moved to the main vessel. Could be multiple transhipment legs but there is no max. But common is 2 max) The field could be empty when non ocean"""
+  shipmentJourneyPortCode: String
+  """Represents inbound order shipment journey details"""
+  shipmentJourney: [CGFInboundOrderShipmentJourney!]!
+}
+
+"""Represents inbound order shipment leg stop milestones"""
+type CGFInboundShipmentLegStopMilestone {
+  """Represents the inbound order shipment leg milestone type."""
+  type: InboundShipmentLegStopMilestoneType!
+  """Represents start date and end date range."""
+  timestamp: DateTime!
+}
+
+"""Represents shipment company details"""
+type Company {
+  """Details about company name"""
+  name: String!
+  """Represents the shipment company type."""
+  type: CompanyType!
+  """Represents the location details"""
+  address: InboundOrderAddress
+}
+
+"""Represents the shipment company type."""
+enum CompanyType {
+  OVERSEAS_AGENT
+  SHIPPER
+  CUSTOMER
+  CONSIGNEE
+  CARRIER
+  UNKNOWN
+}
+
+"""A date string format"""
+scalar Date
+
+"""A date-time string formatted according to RFC 3339 section 5.6 (e.g. '2020-12-25T23:59:59Z' in UTC or '2020-12-25T18:59:59-05:00' in EST)."""
+scalar DateTime
+
+"""DatetimeFilter typically contains from and to date."""
+input DatetimeFilter {
+  """From date in UTC time"""
+  from: DateTime
+  """To date in UTC time"""
+  to: DateTime
+}
+
+"""List of inbound Orders"""
+type InboundOrder {
+  """Represents the Wayfair Order ID ."""
+  orderId: String!
+  """Represents supplier Purchase order number"""
+  supplierOrderNumber: String
+  """Order status consists whether it is open or completed or cancelled."""
+  orderStatus: InboundOrderStatus!
+  """Represents Supplier’s estimate of when the Cargo is ready to be shipped."""
+  estimatedCargoReadyDate: Date
+  """Represents the order created date in UTC"""
+  createdDate: DateTime
+  """Represents the Destination warehouse name"""
+  destinationName: String
+  """It contains inbound order bookings"""
+  bookings: [InboundOrderBooking!]!
+  """Responsible party for shipping the goods from a factory"""
+  shipper: Company
+  """The ocean or road freight carrier is responsible for in the shipping of goods FBS Ocean & Dray orders will have 1 Ocean carrier and 1 Dray carrier."""
+  carrier: Company
+}
+
+"""Represents order address details"""
+type InboundOrderAddress {
+  """address line 1 of the address"""
+  addressLine1: String
+  """address line 2 of the address"""
+  addressLine2: String
+  """Details city name"""
+  city: String
+  """State details"""
+  province: String
+  """Country name"""
+  country: String
+  """It is about postal code"""
+  postalCode: String
+}
+
+"""InboundOrderBooking contains order booking details."""
+type InboundOrderBooking {
+  """Booking request date"""
+  shippingOrderReceivedDate: Date
+  """Booking confirmation date"""
+  shippingOrderConfirmedDate: DateTime
+  """List of shipments associated with this booking."""
+  shipments: [CGFInboundOrderShipment!]!
+}
+
+"""Inbound Orders filters, based on which fragment of dataset can be retrieved"""
+input InboundOrderFilterInput {
+  """Filter by specific inbound order ID."""
+  inboundOrderId: String
+  """Filter by legacy order ID."""
+  legacyOrderId: String
+  """Filter by supplier purchase order ID."""
+  supplierPurchaseOrderId: String
+  """It represents supplier’s estimate of when the Cargo is ready to be shipped"""
+  estimatedCargoReadyDate: DatetimeFilter
+  """Inbound order creation date."""
+  createdDate: DatetimeFilter
+  """Filter by logistics service type."""
+  services: CGFInboundOrderLogisticsService
+  """Filter by receiving reference ID."""
+  receivingReferenceId: String
+  """Filter by supplier part number."""
+  supplierPartNumber: String
+  """Filter by inbound shipment ID."""
+  inboundShipmentId: String
+  """Filter by bill of lading."""
+  billOfLading: String
+}
+
+"""Input type for pagination parameters"""
+input InboundOrderPageInput {
+  """REQUIRED. Maximum number of results to return."""
+  limit: Int! = 10
+  """REQUIRED. Number of the page."""
+  offset: Int! = 0
+}
+
+"""InboundOrderResponse contains list of inbound orders"""
+type InboundOrderResponse {
+  """List of inbound Orders"""
+  inboundOrders: [InboundOrder]
+}
+
+"""Represents inbound order shipment journey type"""
+enum InboundOrderShipmentJourneyType {
+  """Estimated Time of Arrival."""
+  ETA
+  """Actual Time of Arrival."""
+  ATA
+  """Estimated Time of Departure."""
+  ETD
+  """Actual Time of Departure."""
+  ATD
+  """Estimated time of arrival at Origin port."""
+  ETA_ORIGIN_PORT
+  """Actual Time of Arrival at Origin port."""
+  ATA_ORIGIN_PORT
+  """Estimated Time of Departure at Origin port."""
+  ETD_ORIGIN_PORT
+  """Actual Time of Departure at Origin port."""
+  ATD_ORIGIN_PORT
+  """Demurrage Start Date is the last free day date + 1. Example : If the last free day is 5/23, the demurrage start day is 5/24"""
+  DEMURRAGE_START_DATE
+  """Represents the date the HBL is telex released by the MSK origin agent"""
+  BILL_OF_LADING_SURRENDERED
+  """The date when customs cleared"""
+  CUSTOMERS_CLEARED
+  """RepresentsCustomer last feed days rather than internal last feed day last day of free storage time"""
+  LAST_FREE_DAY
+  """Gate out at Destination Port"""
+  GATED_OUT_AT_DESTINATION_PORT
+  """Container arrived rail port"""
+  CONTAINER_ARRIVED_RAIL_PORT
+  """Estimated time of arrival at destination warehouse."""
+  DESTINATION_WAREHOUSE_ETA
+  """Actual time of arrival at destination warehouse."""
+  DESTINATION_WAREHOUSE_ATA
+  """Empty container available for pick up"""
+  EMPTY_CONTAINER_AVAILABLE_FOR_PICKUP
+  """Empty container returned to port"""
+  EMPTY_CONTAINER_RETUNRED_TO_PORT
+}
+
+"""Input type for sorting parameters"""
+input InboundOrderSortInput {
+  """Sorting based on created date, Default Sorting order is ascending on created Date"""
+  createdDate: InboundOrderSortOrder
+}
+
+"""Represents sort order by Ascending or descending order"""
+enum InboundOrderSortOrder {
+  """Sorting Order in ascending order"""
+  ASCENDING
+  """Sorting Order in descending order"""
+  DESCENDING
+}
+
+"""Status of InboundOrders"""
+enum InboundOrderStatus {
+  """Status indicating that an inbound order and is and bookings are not completed."""
+  OPEN
+  """Status indicating that an inbound order and is and bookings are completed."""
+  COMPLETED
+  """Status indicating that an inbound order and is and bookings are Cancelled."""
+  CANCELLED
+}
+
+"""Represents Shipment Equipment Size"""
+enum InboundShipmentEquipmentSize {
+  """20 Foot Dry Container"""
+  CONTAINER_22G0
+  """20 Foot High Cube Dry Container"""
+  CONTAINER_25G0
+  """40 Foot Dry Container"""
+  CONTAINER_42G0
+  """40 Foot High Cube Dry Container"""
+  CONTAINER_45G0
+  """40 Foot Reefer Container"""
+  CONTAINER_42R0
+  """45 Foot High Cube Dry Container"""
+  CONTAINER_L5G0
+  """53-foot Dry container"""
+  TRAILER_53
+  UNKNOWN
+}
+
+"""Represents description about shipment leg."""
+enum InboundShipmentLegStopDescriptor {
+  """Represents the location where the logistics provider first receives the cargo for transport"""
+  PLACE_OF_RECEIPT
+  """Represents the seaport or terminal where the cargo is loaded into main mode of transport"""
+  PORT_OF_LOADING
+  """Represents the seaport or terminal where the cargo is unloaded from the vessel at the destination."""
+  PORT_OF_DISCHARGE
+  """A port where cargo is transferred from one vessel or transport mode to another during its journey to the final destination."""
+  TRANS_SHIPMENT_PORT
+  """A rail terminal where cargo is transferred between rail and another mode of transport (like truck or ship) as part of an intermodal shipment."""
+  INTERMODAL_RAIL_TERMINAL
+  """The location where the shipment or shipment leg is officially ended or closed out."""
+  TERMINATED_LOCATION
+  """A flat-bottomed boat used to transport cargo"""
+  BARGE
+  """A designated location, usually a harbor or terminal, where ships dock to load or unload cargo"""
+  PORT
+  """Represents the place of loading and port of loading"""
+  PLACE_OF_RECEIPT_AND_PORT_OF_LOADING
+  """Ends of the shipment journey"""
+  DESTINATION
+  """Starts the shipment journey"""
+  ORIGIN
+  """The port or terminal where empty shipping containers are picked up by a carrier or shipper before being loaded with cargo."""
+  EMPTY_PICKUP_PORT
+  UNKNOWN
+}
+
+enum InboundShipmentLegStopMilestoneType {
+  """Estimated Time of Arrival."""
+  ETA
+  """Actual Time of Arrival."""
+  ATA
+  """Estimated Time of Departure."""
+  ETD
+  """Actual time of Departure."""
+  ATD
+  """Represents the specific date and time when a container is physically unloaded (discharged) from the vessel at a port or terminal during a shipment leg."""
+  CONTAINER_DISCHARGED_DATE
+  """Represents the date and time when the shipment becomes available for the consignee or next party to physically pick it up from a facility, terminal, or warehouse."""
+  AVAILABLE_FOR_PICKUP_DATE
+  """Represents the first date and time when the shipment becomes available for pickup at a facility or terminal, before any changes or delays."""
+  INITIAL_AVAILABLE_FOR_PICKUP_DATE
+  """Represents the final day a container can be stored at a port, terminal, or depot without incurring detention or demurrage charges."""
+  CONTAINER_LAST_FREE_DAY
+  """Represents the originally scheduled final day a container can remain at a port, terminal, or depot without incurring detention or demurrage charges, before any extensions or changes are applied."""
+  CONTAINER_INITIAL_LAST_FREE_DAY
+  """Represents the date from which per diem charges start accruing for a container."""
+  CONTAINER_PERDIEM_DATE
+  """Represents the scheduled date and time when a shipment is planned to arrive at, or be received by, a warehouse or distribution center."""
+  WAREHOUSE_APPOINTMENT_DATE
+  UNKNOWN
+  """Represents the event or milestone when a shipment, container, or vehicle has officially entered into a facility, such as a port terminal, warehouse, or yard."""
+  IN_GATED
+  """Represents the scheduled date and time when a shipment or container is planned to be picked up from a warehouse or distribution center."""
+  WAREHOUSE_APPOINTMENT_PICKUP_DATE
+  """Represents the scheduled date and time when a shipment, container, or vehicle is planned to arrive at and be handled by a terminal (such as a port, rail yard, or container depot)."""
+  TERMINAL_APPOINTMENT_DATE
+  """Represents the predicted Estimated Time of Arrival"""
+  PREDICTED_ETA
+  """The milestone indicating the moment when the receiving process of a shipment or cargo begins at a facility, warehouse, or terminal."""
+  RECEIVING_START
+  """The milestone indicating the completion of the receiving process for a shipment or cargo at a facility, warehouse, or terminal."""
+  RECEIVING_END
+  """The date and time when a warehouse appointment is initially requested or scheduled for receiving or delivering a shipment."""
+  WAREHOUSE_APPOINTMENT_REQUESTED_DATE
+  """The date and time when a warehouse appointment request has been officially confirmed and scheduled for a shipment’s arrival or pickup"""
+  WAREHOUSE_APPOINTMENT_CONFIRMED_DATE
+  """The date and time when the container has been completely unloaded and emptied of its cargo at a specified location"""
+  CONTAINER_EMPTIED_DATE
+}
+
+"""Represents the inbound order shipment leg trade type."""
+enum InboundShipmentLegTradeType {
+  IMPORT
+  EXPORT
+  NOT_APPLICABLE
+  UNKNOWN
+}
+
+"""Represents the inbound order shipment managing party details."""
+enum InboundShipmentManagingParty {
+  CASTLEGATE_FORWARDING
+  CASTLEGATE
+  THIRD_PARTY
+  SUPPLIER
+  UNKNOWN
+}
+
+"""Contains Shipment Tracking Status"""
+enum InboundShipmentTrackingStatus {
+  """Shipment has not yet started."""
+  NOT_STARTED
+  """The shipment has officially entered the origin facility, terminal, or yard where the shipment process begins"""
+  IN_GATED_AT_ORIGIN
+  """The shipment has officially left the port where it was loaded onto the vessel, starting its ocean or main leg of the journey."""
+  DEPARTED_FROM_PORT_OF_LOADING
+  """The shipment has physically reached and docked at the port where it will be unloaded from the vessel."""
+  ARRIVED_AT_PORT_OF_DISCHARGE
+  """The shipment has arrived at the designated terminal where it will be picked up by the consignee or onward carrier."""
+  ARRIVED_AT_PICK_UP_TERMINAL
+  """The process or milestone when cargo or containers are unloaded from a vessel, aircraft, truck, or other transport vehicle at a port, terminal, or facility."""
+  DISCHARGED
+  """The shipment is ready and released for physical pickup by the consignee or designated carrier at the specified location"""
+  AVAILABLE_FOR_PICKUP
+  """The shipment has officially exited from the pickup terminal or facility after being collected for onward transport."""
+  OUT_GATED_FROM_PICKUP_TERMINAL
+  """The shipment has arrived and been delivered to the designated warehouse or distribution center."""
+  DELIVERED_AT_WAREHOUSE
+  """An empty containe is available and ready for pickup, use, or repositioning at a specified location such as a depot, terminal, or warehouse."""
+  EMPTY_AVAILABLE
+  """Shipment has recorved"""
+  RECOVERED
+  """Shipment got terminated"""
+  TERMINATED
+  """Shipment got cancelled"""
+  CANCELLED
+  """Started from starting point"""
+  STARTED
+  """Details about pick up"""
+  PICKED_UP
+  """Represents shipment arrived at yard."""
+  ARRIVED_AT_YARD
+  UNKNOWN
+  """Represents shipment was started"""
+  RECEIVING_STARTED
+  """Represents shipment was ended"""
+  RECEIVING_ENDED
+}
+
+"""Represents the inbound order shipment transport mode"""
+enum InboundShipmentTransportMode {
+  """Represents shipment transport via ocean"""
+  OCEAN
+  """Represents shipment transport via rail"""
+  RAIL
+  """Represents a short-distance trucking service that moves shipments (often containers) between ports, rail terminals, warehouses, or distribution centers."""
+  DRAY
+  """Represents a flat-bottomed boat used for transporting goods on rivers, canals, and other inland waterways."""
+  BARGE
+  """A road vehicle used to transport goods over land, typically for short to medium distances"""
+  TRUCK
+  UNKNOWN
+}
+
+"""Represents the location details"""
+type Location {
+  """Represents location name details"""
+  name: String!
+  """Represents location type details"""
+  type: LocationType!
+  """Represents order address details"""
+  address: InboundOrderAddress
+  """United Nations code for locations"""
+  unlocode: String
+  castlegateWarehouseId: Int
+}
+
+"""Represents location type details"""
+enum LocationType {
+  CASTLEGATE_WAREHOUSE
+  THIRD_PARTY_WAREHOUSE
+  PORT
+  FACTORY
+  CONTAINER_FREIGHT_STATION
+  SEA_PORT
+  RAIL_PORT
+  DEDICATED_BREAKBULK_FACILITY
+  UNKNOWN
+}

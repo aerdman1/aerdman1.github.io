@@ -1,0 +1,136 @@
+# Inventory Adjustment API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/inventory-visibility-adjustment-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/v1/supplier-order-api/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """Retrieves a list of CastleGate inventory adjustments for different supplier parts at a warehouse."""
+  inventoryAdjustmentList(
+    """Wayfair parent supplier identifier"""
+    supplierId: Int!
+    """Search filters, based on which fragment of dataset can be retrieved"""
+    filter: InventoryAdjustmentFilterInput
+    """Inventory page information, page and pageSize"""
+    page: InventoryAdjustmentPageInput
+    """Sort options for the list of part adjustment results"""
+    sortOption: InventoryAdjustmentSortOptionsInput
+  ): InventoryAdjustmentListPagedConnection!
+}
+
+type Mutation {
+  """Nothing to see here, yet!"""
+  adjustmentMutationNotAvailable: Boolean
+}
+
+"""A date-time string formatted according to RFC 3339 section 5.6 (e.g. '2020-12-25T23:59:59Z' in UTC or '2020-12-25T18:59:59-05:00' in EST)."""
+scalar DateTime
+
+"""Input type for datetime interval."""
+input InventoryAdjustmentDateInterval {
+  """From (begin) datetime, ISO 8601 standard"""
+  from: DateTime
+  """To (end) datetime, ISO 8601 standard"""
+  to: DateTime
+}
+
+"""Object containing information about adjustment for a supplier part."""
+type InventoryAdjustmentEvent {
+  """Date when the adjustment event occurred. If providing a timezone in the InventoryAdjustmentDateInterval, this will use the timezone in 'from' or 'to' otherwise will default to US Eastern Time Zone"""
+  eventDate: DateTime!
+  """Type of adjustment. For example: cycle_count | credited_damage | internal .."""
+  adjustmentType: String
+  """Supplier part identifiers unique to a supplier"""
+  supplierPartNumber: String!
+  """Quantity affected based on adjustment type. Positive indicating adjustment in, and negative indicating adjustment out"""
+  quantity: Int!
+  """Supplier warehouse object"""
+  warehouse: SupplierWarehouse
+  """Description indicating further details of the adjustment"""
+  description: String
+}
+
+"""Inventory search filters, based on which fragment of dataset can be retrieved."""
+input InventoryAdjustmentFilterInput {
+  """Supplier part identifiers unique to a supplier"""
+  supplierPartNumber: String
+  """Date interval filter for the date when an adjustment was initiated for a given supplier part. Data is limited to adjustments with a start date from 2023-06-01T00:00:00-05:00."""
+  transactionDateInterval: InventoryAdjustmentDateInterval
+}
+
+"""Object containing page and inventory adjustments information."""
+type InventoryAdjustmentListPagedConnection {
+  """Page-based pagination information"""
+  pageInfo: InventoryAdjustmentPagedInfo!
+  """An nodes array type of InventoryAdjustmentEvent"""
+  nodes: [InventoryAdjustmentEvent!]!
+}
+
+"""Inventory Adjustment sort by option."""
+enum InventoryAdjustmentLogSortBy {
+  """Event date"""
+  EVENT_DATE
+}
+
+"""Input type for page information."""
+input InventoryAdjustmentPageInput {
+  """Page number, defaults to 0."""
+  page: Int = 0
+  """Page size, defaults to 50."""
+  pageSize: Int = 50
+}
+
+"""Information about pagination in a page-based connection."""
+type InventoryAdjustmentPagedInfo {
+  """Page number"""
+  pageNumber: Int
+  """Page size"""
+  pageSize: Int!
+  """Total pages"""
+  totalPages: Int
+  """Total elements"""
+  totalElements: Int
+}
+
+"""Input type for result sorting options."""
+input InventoryAdjustmentSortOptionsInput {
+  """Sort by field, defaults to EVENT_DATE."""
+  sortBy: InventoryAdjustmentLogSortBy = EVENT_DATE
+  """Sort order, defaults to DESC."""
+  sortOrder: InventoryAdjustmentSortOrder = DESC
+}
+
+"""Inventory Adjustment sort order options."""
+enum InventoryAdjustmentSortOrder {
+  """Ascending"""
+  ASC
+  """Descending"""
+  DESC
+}
+
+"""Supplier Warehouse"""
+type SupplierWarehouse {
+  """Supplier known warehouse identifier, i.e. child supplierId"""
+  warehouseId: Int
+  """Name of the Wayfair warehouse, e.g. "Cranbury" """
+  name: String
+  """The address of the warehouse"""
+  address: WarehouseAddress
+}
+
+"""WarehouseAddress"""
+type WarehouseAddress {
+  """The street address"""
+  address1: String
+  """The secondary street address field"""
+  address2: String
+  """The tertiary street address field"""
+  address3: String
+  """The city"""
+  city: String
+  """The state or region short name"""
+  stateShortName: String
+  """The country, ISO 3166-1 alpha-3 standard"""
+  country: String
+  """The postal code"""
+  postalCode: String
+}

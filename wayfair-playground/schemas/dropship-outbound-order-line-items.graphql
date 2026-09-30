@@ -1,0 +1,213 @@
+# Outbound Order Line Items API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/outbound-order-line-items-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/dropship-orders/2026-08/graphql
+# Not produced by introspection: verify against the live API before publishing.
+
+type Query {
+  """One outbound order line item of the supplier the access token acts for, looked up by its identifier. An unknown identifier is reported in GraphQL errors[] with code NOT_FOUND."""
+  outboundOrderLineItem(
+    """Identifier of the order line item to return."""
+    orderLineItemId: ID!
+  ): OutboundOrderLineItem
+  """Paginated outbound order line items of the supplier the access token acts for, filtered by date window and status."""
+  outboundOrderLineItems(
+    """Date window and status the results are restricted to."""
+    filter: OutboundOrderLineItemFilterInput!
+    """Maximum number of items per page. Must be between 10 and 75; defaults to 25 when omitted."""
+    first: Int
+    """Cursor to read forward from: pageInfo.endCursor or any edge's cursor."""
+    after: String
+    """Maximum number of items per page when reading backward. Must be between 10 and 75; defaults to 25 when omitted. One direction per request: last with first or after is VALIDATION."""
+    last: Int
+    """Cursor to read backward from: pageInfo.startCursor or any edge's cursor."""
+    before: String
+    """Sort field and direction. Defaults to UPDATED_AT ASC when omitted."""
+    sort: OutboundOrderLineItemSortInput
+  ): OutboundOrderLineItemCursorConnection!
+}
+
+"""ISO 3166-1 alpha-3 country code, e.g. USA."""
+scalar CountryCode
+
+"""ISO 4217 currency codes currently supported by supplier APIs."""
+enum CurrencyCode {
+  """Canadian dollar."""
+  CAD
+  """Euro."""
+  EUR
+  """British pound sterling."""
+  GBP
+  """United States dollar."""
+  USD
+}
+
+"""UTC timestamp in RFC 3339 format, for example 2026-09-25T14:03:11Z."""
+scalar DateTime
+
+"""Date-time window in UTC RFC 3339; both bounds are required."""
+input DateTimeIntervalInput {
+  """Inclusive lower bound."""
+  from: DateTime!
+  """Exclusive upper bound; a record exactly at to belongs to the next window."""
+  to: DateTime!
+}
+
+"""Monetary amount represented without floating-point rounding."""
+type Money {
+  """Decimal amount, e.g. "45.50"."""
+  amount: String!
+  """ISO 4217 currency the amount is denominated in."""
+  currencyCode: CurrencyCode!
+}
+
+"""Fulfillment and financial detail for one outbound order line item."""
+type OutboundOrderLineItem {
+  """Identifier of the order line item."""
+  orderLineItemId: ID!
+  """Purchase order the line item belongs to."""
+  purchaseOrderNumber: ID!
+  """When the purchase order was placed."""
+  purchaseOrderDate: DateTime!
+  """When the item shipped; null until it ships."""
+  shippedDate: DateTime
+  """When the item was delivered; null until it is delivered."""
+  deliveredDate: DateTime
+  """Last time the order line item changed."""
+  updatedAt: DateTime!
+  """Current fulfillment status."""
+  status: OutboundOrderLineItemStatus!
+  """Supplier's part number for the product."""
+  supplierPartNumber: String!
+  """Supplier's name for the product."""
+  supplierPartName: String!
+  """Number of units ordered."""
+  quantity: Int!
+  """How the item is fulfilled; null when not yet determined."""
+  fulfillmentType: OutboundOrderLineItemFulfillmentMethod
+  """Amount payable to the supplier for this line after credits and conditional offers."""
+  orderValue: Money!
+  """Supplier fulfilling the order line item."""
+  supplier: OutboundOrderLineItemSupplier!
+  """Masked recipient detail."""
+  customer: OutboundOrderLineItemCustomer!
+  """Carrier and tracking detail; null until the item ships."""
+  shipment: OutboundOrderLineItemShipment
+}
+
+"""A page of outbound order line items. Results are ordered by the requested sort attribute and direction (tie-break orderLineItemId) so paging is stable."""
+type OutboundOrderLineItemCursorConnection {
+  """Order line items on this page, each with the cursor that addresses it."""
+  edges: [OutboundOrderLineItemEdge!]!
+  """Whether a page exists in either direction, and the cursors to fetch them with."""
+  pageInfo: PageInfo!
+}
+
+"""Recipient of an outbound order line item, with identifying detail masked."""
+type OutboundOrderLineItemCustomer {
+  """Masked recipient identifier."""
+  customerId: String!
+  """Country the item is shipped to."""
+  customerCountry: CountryCode!
+}
+
+"""Which timestamp on the order line item the requested date window applies to."""
+enum OutboundOrderLineItemDateTypeInput {
+  """Last time the order line item changed."""
+  UPDATED_AT
+  """Date the order line item shipped."""
+  SHIPPED
+  """Date the order line item was delivered."""
+  DELIVERED
+}
+
+"""One order line item on a page, with the cursor of its own position in the result set."""
+type OutboundOrderLineItemEdge {
+  """The order line item at this cursor position in the filtered result set."""
+  node: OutboundOrderLineItem!
+  """Opaque cursor addressing this item; pass as after or before."""
+  cursor: String!
+}
+
+"""Criteria restricting which outbound order line items are returned."""
+input OutboundOrderLineItemFilterInput {
+  """Which date the dateRange window applies to."""
+  dateType: OutboundOrderLineItemDateTypeInput!
+  """Time window to filter by (from inclusive, to exclusive), UTC RFC 3339."""
+  dateRange: DateTimeIntervalInput!
+  """Fulfillment statuses the results are restricted to; at most 10 values, more are rejected with FILTER_CARDINALITY_EXCEEDED. Defaults to [SHIPPED, DELIVERED], every status this read serves, when omitted."""
+  status: [OutboundOrderLineItemStatusInput!]
+}
+
+"""How an outbound order line item is fulfilled."""
+enum OutboundOrderLineItemFulfillmentMethod {
+  """Shipped directly by the supplier."""
+  DROPSHIP
+  """Shipped from a Wayfair warehouse."""
+  CASTLEGATE
+}
+
+"""Carrier and tracking detail for an outbound order line item."""
+type OutboundOrderLineItemShipment {
+  """Carrier that first took possession of the shipment. Null while the shipment is known by its tracking numbers alone, which the source can answer with before a carrier is recorded."""
+  carrierName: String
+  """Tracking numbers for the shipment; empty until one is recorded."""
+  trackingNumbers: [String!]!
+}
+
+"""Attribute a page of outbound order line items can be ordered by. Only the attribute this read orders on is published: a shipped or delivered date is a date this read filters by, and offering it as a sort field would be a contract the source cannot serve."""
+enum OutboundOrderLineItemSortFieldInput {
+  """Last time the order line item changed."""
+  UPDATED_AT
+}
+
+"""Sort order applied to a page of outbound order line items."""
+input OutboundOrderLineItemSortInput {
+  """Attribute the results are ordered by."""
+  field: OutboundOrderLineItemSortFieldInput!
+  """Ascending or descending order."""
+  direction: SortDirectionInput!
+}
+
+"""Fulfillment status of an outbound order line item."""
+enum OutboundOrderLineItemStatus {
+  """Shipped but not yet delivered."""
+  SHIPPED
+  """Delivered to the customer."""
+  DELIVERED
+}
+
+"""Fulfillment status the results can be filtered by."""
+enum OutboundOrderLineItemStatusInput {
+  """Shipped but not yet delivered."""
+  SHIPPED
+  """Delivered to the customer."""
+  DELIVERED
+}
+
+"""The supplier an order line item belongs to: the supplier the caller's access token acts for, since a read serves no other."""
+type OutboundOrderLineItemSupplier {
+  """Identifier of the supplier the token acts for."""
+  supplierId: ID!
+  """Country the supplier ships from. Null when the lookup is unavailable."""
+  supplierCountry: CountryCode
+}
+
+"""Cursor pagination metadata."""
+type PageInfo {
+  """True when another page follows this one."""
+  hasNextPage: Boolean!
+  """True when a page exists before this one."""
+  hasPreviousPage: Boolean!
+  """Opaque cursor of the first node on this page."""
+  startCursor: String
+  """Opaque cursor of the last node on this page; pass back as after."""
+  endCursor: String
+}
+
+"""Sort direction."""
+enum SortDirectionInput {
+  """Return lower sort values first."""
+  ASC
+  """Return higher sort values first."""
+  DESC
+}

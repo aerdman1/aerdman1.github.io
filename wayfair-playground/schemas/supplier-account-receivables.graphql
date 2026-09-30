@@ -1,0 +1,792 @@
+# Supplier Account Receivables API
+# Rebuilt from the public reference docs at https://developer.wayfair.io/posts/docs/supplier-account-receivables-api/reference/GraphQL/v1.0.0
+# Endpoint: https://api.wayfair.io/2026-09/supplier-account-receivables/graphql
+# Not produced by introspection: verify against the live API before publishing.
+# Corrected 2026-09-30 against the API Playground's own operations (fix_schemas.py):
+#   Query.supplierPayments -> SupplierPaymentsQueries { accountReceivablesSummary, accountReceivablesDetails }
+
+type Query {
+  """Supplier remittance and receivables queries."""
+  supplierPayments: SupplierPaymentsQueries
+}
+
+"""Supplier remittance and receivables queries. Reached as `query { supplierPayments { … } }`."""
+type SupplierPaymentsQueries {
+  """Remittance batches for a supplier. Requires the supplier-payments-external-api:read-remittances grant for the supplier. Supplier identity is the validated token's supplier claim when it carries one; otherwise the WF-Supplier-Id request header names the supplier. A header that disagrees with the token's claim is rejected with FORBIDDEN. It is never a GraphQL argument."""
+  accountReceivablesSummary(
+    """Narrowing criteria. Fields combine with AND."""
+    filter: AccountReceivablesSummaryFilterInput!
+    """Ordering. Defaults to ISSUE_DATE ASC when omitted."""
+    sort: AccountReceivablesSummarySortInput
+    """Forward page size. Defaults to 50, maximum 100; outside that range the request is rejected with INVALID_PAGE_SIZE."""
+    first: Int
+    """Forward cursor: a previous page's pageInfo.endCursor; omit on the first page. Cursors are bound to the filter, sort and page size that produced them and expire 24 hours after they are issued; a stale or foreign cursor is rejected with INVALID_PAGE_TOKEN."""
+    after: String
+  ): AccountReceivablesSummaryConnection!
+  """Line-level detail for up to 100 remittance batches. Same grant, same supplier resolution and the same cursor rules as accountReceivablesSummary; a remittance number that belongs to another supplier simply matches nothing rather than reporting its existence."""
+  accountReceivablesDetails(
+    """Narrowing criteria. Fields combine with AND."""
+    filter: AccountReceivablesDetailsFilterInput!
+    """Ordering. Defaults to EVENT_DATE ASC when omitted."""
+    sort: AccountReceivablesDetailsSortInput
+    """Forward page size. Defaults to 50, maximum 100; outside that range the request is rejected with INVALID_PAGE_SIZE."""
+    first: Int
+    """Forward cursor: a previous page's pageInfo.endCursor; omit on the first page. Cursors are bound to the filter, sort and page size that produced them and expire 24 hours after they are issued; a stale or foreign cursor is rejected with INVALID_PAGE_TOKEN."""
+    after: String
+  ): AccountReceivablesDetailsConnection!
+}
+
+"""Allowance categories. Mirrors the accounts-payable allowance catalog; OTHER is published for an allowance outside it, and a new category is added as a new value, so clients must tolerate unknown values."""
+enum AccountReceivablesAllowanceType {
+  """Supplier contribution toward shared advertising costs."""
+  ADVERTISING_CO_OP
+  """Allowance covering product damage or defects."""
+  DAMAGES_DEFECTS
+  """Allowance covering damages, defects, and returns."""
+  DAMAGES_DEFECTS_RETURNS
+  """Discount for paying earlier than the standard payment terms."""
+  EARLY_PAY_DISCOUNT
+  """Supplier discount that supports product pricing."""
+  PRICING_DISCOUNT
+  """Supplier-funded discount for a promotion."""
+  PROMOTIONAL_DISCOUNT
+  """Discount or contribution tied to homepage product placement."""
+  HOMEPAGE_PLACEMENT_DISCOUNT
+  """Discount related to stocking or inventory support."""
+  STOCKING_DISCOUNT
+  """Allowance covering product damage and returns."""
+  DAMAGES_RETURNS
+  """Allowance related to losses or issues caused by inadequate packaging."""
+  INSUFFICIENT_PACKAGING
+  """Allowance covering a broad range of product incidents and returns."""
+  ALL_INCIDENCES
+  """Allowance specifically covering product damage."""
+  DAMAGES
+  """Discount associated with payment by ACH."""
+  ACH_PAYMENT_DISCOUNT
+  """Discount or allowance that applies when specified conditions are met."""
+  CONDITIONAL_OFFER
+  """Allowance that does not fit another listed category."""
+  OTHER
+}
+
+"""Deduction reason category, one value per Partner Home deduction type (credit origin)."""
+enum AccountReceivablesDeductionType {
+  """A deduction reason not covered by a more specific category."""
+  OTHER
+  """The shipment was lost while in transit."""
+  LOST_IN_TRANSIT
+  """The item was damaged during transit."""
+  DAMAGED_IN_TRANSIT
+  """The wrong item or variant was shipped."""
+  MISSHIPPED
+  """The supplier was charged more than the correct product amount."""
+  PRODUCT_OVERCHARGED
+  """Freight or shipping charges exceeded the correct amount."""
+  FREIGHT_OVERCHARGED
+  """The product was defective."""
+  DEFECTIVE
+  """Incorrect or misleading product information caused the issue."""
+  MISINFORMATION
+  """The product arrived with parts missing."""
+  MISSING_PARTS
+  """The deduction relates to a customer return."""
+  RETURN
+  """A claim amount was paid to the supplier/vendor."""
+  CLAIM_PAID_TO_VENDOR
+  """A repair was incomplete or otherwise unacceptable."""
+  UNACCEPTABLE_REPAIR
+  """The deduction relates to an item that was cancelled."""
+  CANCELLED_ITEM
+  """A third party's billing error caused the deduction."""
+  THIRD_PARTY_BILLING_ERROR
+  """A replacement was provided at no cost."""
+  NO_COST_REPLACEMENT
+  """A chargeback was applied to the supplier account."""
+  CHARGEBACK
+  """The deduction is for not meeting carrier requirements."""
+  CARRIER_COMPLIANCE
+  """The shipment did not meet the required shipping speed."""
+  SHIP_SPEED_COMPLIANCE
+  """The packaging was inadequate to protect the item."""
+  INSUFFICIENT_PACKAGING
+  """Freight charges were billed incorrectly."""
+  FREIGHT_MIS_BILL
+  """The item was returned to the supplier."""
+  RETURN_TO_VENDOR
+  """The shipment was incomplete or missing items."""
+  INCOMPLETE_SHIPMENT
+  """The invoice contained a discrepancy."""
+  INVOICING_DISCREPANCE
+  """An overcharge associated with DailyFair."""
+  DAILY_FAIR_OVERCHARGE
+  """A chargeback related to a Joss & Main cancellation."""
+  CHARGEBACK_JM_CANCEL
+  """A chargeback related to a Joss & Main backorder."""
+  CHARGEBACK_JM_BACK_ORDER
+  """The deduction relates to a warranty claim."""
+  WARRANTY
+  """The deduction is for not meeting RPG requirements."""
+  RPG_COMPLIANCE
+  """The deduction relates to a replacement part."""
+  REPLACEMENT_PART
+  """Freight was overcharged for signature service."""
+  FREIGHT_OVERCHARGE_SIGNATURE_SERVICE
+  """The deduction is for an overcharge associated with Tried & True."""
+  TRIED_AND_TRUE_OVERCHARGE
+  """The item was damaged during installation."""
+  INSTALLATION_DAMAGE
+  """The shipment was returned to its sender."""
+  RETURNED_TO_SENDER
+  """The deduction relates to a brand sample."""
+  BRAND_SAMPLE
+  """The deduction relates to a photo-studio sample."""
+  PHOTO_STUDIO_SAMPLE
+  """The item was distressed, damaged, or otherwise unsaleable."""
+  DISTRESSED
+  """The order was replaced under warranty."""
+  ORDER_REPLACED_VIA_WARRANTY
+  """The deduction adjusts or reconciles a prior amount."""
+  RECONCILIATION
+  """The deduction is a DFI-related discount."""
+  DFI_DISCOUNT
+  """The deduction relates to transferring ownership of a returned item to Castlegate."""
+  CASTLEGATE_RETURN_OWNERSHIP_TRANSFER
+  """The reason is another issue not represented by a named category."""
+  SOMETHING_ELSE
+  """The deduction relates to a legal matter."""
+  LEGAL_ISSUE
+  """The deduction relates to a rebate tied to reviews."""
+  REVIEWS_FOR_REBATES
+  """The deduction is for not meeting supplier requirements."""
+  SUPPLIER_COMPLIANCE
+  """The deduction relates to the swatch program."""
+  SWATCH_PROGRAM
+  """A replacement-part request or order was cancelled."""
+  REPLACEMENT_PART_CANCELLATION
+  """The return was processed through Wayfair's managed-returns program."""
+  WAYFAIR_MANAGED_RETURNS
+  """The return was processed through the supplier-managed-returns program."""
+  SUPPLIER_MANAGED_RETURNS
+  """The return was processed through Wayfair-managed returns for a large parcel."""
+  WAYFAIR_MANAGED_RETURNS_LP
+  """The deduction relates to a retail credit."""
+  RETAIL_CREDIT
+  """The deduction resulted from a SKU audit."""
+  SKU_AUDIT
+  """The deduction relates to marketing-channel activity or costs."""
+  MARKETING_CHANNELS
+  """The deduction is for not meeting shipping-policy requirements."""
+  SHIPPING_POLICY_COMPLIANCE
+  """Replacement parts were unavailable because the SKU's replacement-parts option was deactivated."""
+  REPLACEMENT_PARTS_DEACTIVATED
+  """The deduction is for not meeting warehouse-policy requirements."""
+  WAREHOUSE_POLICY_COMPLIANCE
+}
+
+"""A page of remittance lines. An empty nodes list is a successful empty result."""
+type AccountReceivablesDetailsConnection {
+  """Page of remittance lines matching the filter. Empty array is a successful empty result."""
+  nodes: [AccountReceivablesLine!]!
+  """Cursor-connection page metadata for forward paging."""
+  pageInfo: PageInfo!
+}
+
+"""Typed filter for remittance line detail. Fields combine with AND."""
+input AccountReceivablesDetailsFilterInput {
+  """Remittance batches to read lines from: 1–100 values. More than 100 is rejected with FILTER_CARDINALITY_EXCEEDED. At least one of remittanceNumbers or eventDate is required; a request supplying neither is rejected with MISSING_REQUIRED_FILTER."""
+  remittanceNumbers: [String!]
+  """Line event-date window: from inclusive, to exclusive, UTC RFC 3339. At least one of remittanceNumbers or eventDate is required; when remittanceNumbers is omitted the window is applied across every remittance the supplier owns."""
+  eventDate: DateTimeIntervalInput
+  """Optional equality filter on the line kind. INVOICE selects every invoiced line regardless of order type."""
+  eventType: AccountReceivablesEventTypeInput
+  """Optional equality filter on the order type the line was raised against."""
+  orderType: AccountReceivablesOrderTypeInput
+  """Optional filter on where the order was placed. Exactly one of storefront or handle is given; supplying neither or both is rejected with INVALID_FILTER_VALUE. Lines with no origin (origin: null) never match."""
+  origin: CommercialOriginInput
+  """Optional equality filter on the dispute lifecycle state of a deduction. Only DEDUCTION lines whose deduction record is currently in this state match; lines of other event types never do."""
+  disputeOutcome: AccountReceivablesDisputeOutcomeInput
+}
+
+"""Closed sort-field set for remittance line detail."""
+enum AccountReceivablesDetailsSortFieldInput {
+  """Line event date (eventDate)."""
+  EVENT_DATE
+  """Parent remittance batch number."""
+  REMITTANCE_NUMBER
+}
+
+"""Standard sort shape for remittance line detail."""
+input AccountReceivablesDetailsSortInput {
+  """Sort field. Default EVENT_DATE when sort is omitted."""
+  field: AccountReceivablesDetailsSortFieldInput!
+  """Sort direction."""
+  direction: SortDirectionInput!
+}
+
+"""Dispute lifecycle states. OPENED is an open deduction with no dispute filed; IN_DISPUTE means a dispute is pending resolution; RETRIEVAL_INITIATED and RETRIEVAL_COMPLETED describe the retrieval steps; SETTLED and CANCELLED are the terminal deduction outcomes; and APPROACHING_SETTLEMENT marks a dispute nearing settlement. No transition ordering is prescribed among the retrieval states or APPROACHING_SETTLEMENT."""
+enum AccountReceivablesDisputeOutcome {
+  """Open deduction with no dispute filed yet."""
+  OPENED
+  """Dispute is pending resolution."""
+  IN_DISPUTE
+  """Retrieval step has started."""
+  RETRIEVAL_INITIATED
+  """Retrieval step has completed."""
+  RETRIEVAL_COMPLETED
+  """Terminal settled outcome."""
+  SETTLED
+  """Terminal cancelled outcome."""
+  CANCELLED
+  """Dispute is nearing settlement."""
+  APPROACHING_SETTLEMENT
+}
+
+enum AccountReceivablesDisputeOutcomeInput {
+  """Open deduction with no dispute filed yet."""
+  OPENED
+  """Dispute is pending resolution."""
+  IN_DISPUTE
+  """Retrieval step has started."""
+  RETRIEVAL_INITIATED
+  """Retrieval step has completed."""
+  RETRIEVAL_COMPLETED
+  """Terminal settled outcome."""
+  SETTLED
+  """Terminal cancelled outcome."""
+  CANCELLED
+  """Dispute is nearing settlement."""
+  APPROACHING_SETTLEMENT
+}
+
+"""Line kinds, aligned with the async report. Each value has a matching AccountReceivablesLine implementation and is filterable."""
+enum AccountReceivablesEventType {
+  """An invoice line for shipped goods or for services, advertising, or rebates."""
+  INVOICE
+  """An amount withheld from the remittance."""
+  DEDUCTION
+  """A chargeback applied against the supplier account."""
+  CHARGEBACK
+  """A line that nets a balance against the remittance."""
+  NETTING
+}
+
+"""The line kinds that can be filtered on — every value of AccountReceivablesEventType."""
+enum AccountReceivablesEventTypeInput {
+  """An invoice line for shipped goods or for services, advertising, or rebates."""
+  INVOICE
+  """An amount withheld from the remittance."""
+  DEDUCTION
+  """A chargeback applied against the supplier account."""
+  CHARGEBACK
+  """A line that nets a balance against the remittance."""
+  NETTING
+}
+
+"""One line within a remittance batch. The concrete type tells you what kind of line it is and carries only the fields that kind populates, so a field you can select is a field that has a value and null always means "no value" rather than "not applicable to this row". Every field is CONFIDENTIAL (supplier financial data)."""
+interface AccountReceivablesLine {
+  """Remittance batch the line was paid on."""
+  remittanceNumber: String!
+  """Invoice or event identifier on the line (Partner Home Event Id). May be an empty string when the source stored none."""
+  invoiceNumber: String!
+  """Wayfair purchase order number on the line (Partner Home PO Number). May be an empty string when the line is not PO-backed."""
+  purchaseOrderNumber: String!
+  """Row kind. Mirrors the concrete type name, so a client can branch on a value instead of on __typename."""
+  eventType: AccountReceivablesEventType!
+  """Where the order was placed. Null when the line is not tied to an order placed somewhere (netting, services, advertising and rebate lines) or the store is not yet named by this contract."""
+  origin: CommercialOrigin
+  """Date the line was invoiced, at midnight UTC (RFC 3339)."""
+  eventDate: DateTime!
+  """Product-cost component of the line. JSON string on output."""
+  productAmount: Decimal!
+  """Shipping component. JSON string on output."""
+  shippingAmount: Decimal!
+  """Other component (fees, advertising, netting balances). JSON string on output."""
+  otherAmount: Decimal!
+  """Tax / VAT component. JSON string on output."""
+  taxVatAmount: Decimal!
+  """Negative when the line reduces the remittance total."""
+  paymentAmount: Decimal!
+  """Sum of allowances; 0 when the line has no allowances."""
+  allowanceAmount: Decimal!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Itemized allowances on this line. Bounded, not paged: allowances are drawn from the fixed accounts-payable catalog (AccountReceivablesAllowanceType, 15 values today) and a line is granted at most a handful of them — the observed maximum across every production line is 4, and the 99th percentile is 3. Empty when the line has no allowances."""
+  allowances: [Allowance!]!
+}
+
+"""The order type a line was raised against. Every order type the receivables source stores is named here, a superset of the async report's order_type — the report leaves five advertising and programme-fee types unnamed, which this surface publishes rather than serving null. Values may be added within a version."""
+enum AccountReceivablesOrderType {
+  """CastleGate fulfillment program order."""
+  CASTLEGATE
+  """CastleGate transportation charge (distinct from CastleGate fulfillment)."""
+  CASTLEGATE_TRANSPORTATION
+  """Cash payment application line."""
+  CASH_PAYMENT_APPLICATION
+  """Display advertising program."""
+  DISPLAY_ADVERTISING
+  """Dropship order."""
+  DROPSHIP
+  """Merchandising-as-a-Service product line."""
+  MAAS_PRODUCT
+  """Merchandising program."""
+  MERCHANDISING
+  """Meta non-prepaid display advertising."""
+  META_NON_PREPAID_DISPLAY_AD
+  """Paid supplier management fee."""
+  PAID_SUPPLIER_MANAGEMENT
+  """Partner Home access fee."""
+  PARTNER_HOME_ACCESS_FEE
+  """Product listing ad (PLA) display advertising."""
+  PLA_DISPLAY_AD
+  """Promotional program line."""
+  PROMOTIONAL
+  """Sponsored products program."""
+  SPONSORED_PRODUCTS
+  """Supplier-funded reviews program."""
+  SUPPLIER_FUNDED_REVIEWS
+  """Supplier rebates program."""
+  SUPPLIER_REBATES
+  """Wayfair-sponsored products program."""
+  WAYFAIR_SPONSORED_PRODUCTS
+}
+
+"""The order types that can be filtered on — every value of AccountReceivablesOrderType."""
+enum AccountReceivablesOrderTypeInput {
+  """CastleGate fulfillment program order."""
+  CASTLEGATE
+  """CastleGate transportation charge (distinct from CastleGate fulfillment)."""
+  CASTLEGATE_TRANSPORTATION
+  """Cash payment application line."""
+  CASH_PAYMENT_APPLICATION
+  """Display advertising program."""
+  DISPLAY_ADVERTISING
+  """Dropship order."""
+  DROPSHIP
+  """Merchandising-as-a-Service product line."""
+  MAAS_PRODUCT
+  """Merchandising program."""
+  MERCHANDISING
+  """Meta non-prepaid display advertising."""
+  META_NON_PREPAID_DISPLAY_AD
+  """Paid supplier management fee."""
+  PAID_SUPPLIER_MANAGEMENT
+  """Partner Home access fee."""
+  PARTNER_HOME_ACCESS_FEE
+  """Product listing ad (PLA) display advertising."""
+  PLA_DISPLAY_AD
+  """Promotional program line."""
+  PROMOTIONAL
+  """Sponsored products program."""
+  SPONSORED_PRODUCTS
+  """Supplier-funded reviews program."""
+  SUPPLIER_FUNDED_REVIEWS
+  """Supplier rebates program."""
+  SUPPLIER_REBATES
+  """Wayfair-sponsored products program."""
+  WAYFAIR_SPONSORED_PRODUCTS
+}
+
+"""A remittance batch paid to the supplier. Every field is CONFIDENTIAL (supplier financial data)."""
+type AccountReceivablesSummary {
+  """Remittance batch identifier as it appears on the supplier's remittance advice."""
+  remittanceNumber: String!
+  """Issue date of the remittance, at midnight UTC (RFC 3339)."""
+  issueDate: DateTime!
+  """Payment instrument family; no instrument identifiers are published."""
+  paymentMethod: RemittancePaymentMethod!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Remittance total paid to the supplier."""
+  totalAmount: Decimal!
+  """Early payout discount withheld from the remittance total, stated as a negative amount; 0 when no discount was withheld."""
+  earlyPayoutDiscountAmount: Decimal!
+}
+
+type AccountReceivablesSummaryConnection {
+  """Page of remittance batches matching the filter. Empty array is a successful empty result."""
+  nodes: [AccountReceivablesSummary!]!
+  """Cursor-connection page metadata for forward paging."""
+  pageInfo: PageInfo!
+}
+
+"""Typed filter for remittance summary list operations. Fields combine with AND."""
+input AccountReceivablesSummaryFilterInput {
+  """Remittance issue-date window: from inclusive, to exclusive, UTC RFC 3339. Both bounds are required. from must be on or after the 2024-01-01 UTC data-availability floor."""
+  issueDate: DateTimeIntervalInput!
+}
+
+"""Closed sort-field set for remittance summary."""
+enum AccountReceivablesSummarySortFieldInput {
+  """Remittance issue date (issueDate)."""
+  ISSUE_DATE
+}
+
+"""Standard sort shape for remittance summary."""
+input AccountReceivablesSummarySortInput {
+  """Sort field. Only ISSUE_DATE is supported."""
+  field: AccountReceivablesSummarySortFieldInput!
+  """Sort direction."""
+  direction: SortDirectionInput!
+}
+
+"""An allowance applied to a line."""
+type Allowance {
+  """Allowance amount applied to the line (typically negative). JSON string on output."""
+  amount: Decimal!
+  """Allowance category."""
+  type: AccountReceivablesAllowanceType!
+  """Rate expressed in percent, e.g. 3.00 = 3%; null when the allowance carries no rate."""
+  ratePercent: Decimal
+}
+
+"""A chargeback against the supplier account. eventType is CHARGEBACK."""
+type ChargebackLine {
+  """Remittance batch the line was paid on. Join key from accountReceivablesSummary."""
+  remittanceNumber: String!
+  """Invoice or event identifier on the line (Partner Home Event Id). May be an empty string when the source stored none."""
+  invoiceNumber: String!
+  """Wayfair purchase order number on the line (Partner Home PO Number). May be an empty string when the line is not PO-backed."""
+  purchaseOrderNumber: String!
+  """Line kind. Mirrors the concrete type so clients can branch on a value instead of __typename."""
+  eventType: AccountReceivablesEventType!
+  """Where the order was placed (Partner Home Business). Null when not tied to a named storefront, external surface or fulfillment program."""
+  origin: CommercialOrigin
+  """Date the line was invoiced, at midnight UTC (RFC 3339). Partner Home Event Date."""
+  eventDate: DateTime!
+  """Product-cost component of the line. JSON string on output."""
+  productAmount: Decimal!
+  """Shipping component. JSON string on output."""
+  shippingAmount: Decimal!
+  """Other component (fees, advertising, netting balances). JSON string on output."""
+  otherAmount: Decimal!
+  """Tax / VAT component. JSON string on output."""
+  taxVatAmount: Decimal!
+  """Net effect on the remittance. Negative when the line reduces the total. Partner Home Payment Amount."""
+  paymentAmount: Decimal!
+  """Sum of allowances; 0 when the line has no allowances (not null)."""
+  allowanceAmount: Decimal!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Itemized allowances on this line (bounded list, not paged). Empty when the line has none."""
+  allowances: [Allowance!]!
+}
+
+"""Where an order was placed. The concrete type tells you which kind of origin it is and carries only the fields that kind populates, so a field you can select is a field that has a value and null always means "no value" rather than "not applicable to this row". Three kinds exist: a Wayfair storefront (StorefrontOrigin, the only kind with a market), a partner surface outside Wayfair (ExternalSurfaceOrigin), and a fulfillment program (FulfillmentProgramOrigin). Kinds and handles may be added within a version, so clients must tolerate unknown values."""
+interface CommercialOrigin {
+  """Human-readable name of the origin, e.g. Wayfair Canada, The Knot, CastleGate."""
+  displayName: String!
+}
+
+"""Every non-storefront origin that can be published or filtered on: the handle of an ExternalSurfaceOrigin or FulfillmentProgramOrigin. Storefronts have no handle; they are identified and filtered by market."""
+enum CommercialOriginHandle {
+  """External surface: eBay."""
+  EBAY
+  """External surface: Google Express."""
+  GOOGLE_EXPRESS
+  """External surface: The Knot."""
+  THE_KNOT
+  """External surface: Wayfair at Walmart."""
+  WAYFAIR_AT_WALMART
+  """External surface: Staples."""
+  STAPLES
+  """Fulfillment program: CastleGate."""
+  CASTLEGATE
+  """Fulfillment program: Multichannel."""
+  MULTICHANNEL
+}
+
+"""The non-storefront origins that can be filtered on — every value of CommercialOriginHandle."""
+enum CommercialOriginHandleInput {
+  """External surface: eBay."""
+  EBAY
+  """External surface: Google Express."""
+  GOOGLE_EXPRESS
+  """External surface: The Knot."""
+  THE_KNOT
+  """External surface: Wayfair at Walmart."""
+  WAYFAIR_AT_WALMART
+  """External surface: Staples."""
+  STAPLES
+  """Fulfillment program: CastleGate."""
+  CASTLEGATE
+  """Fulfillment program: Multichannel."""
+  MULTICHANNEL
+}
+
+"""Where an order was placed, as a filter. Exactly one field is given: storefront identifies a Wayfair-owned storefront by its market and matches lines whose origin is a StorefrontOrigin in that market; handle names one external surface or fulfillment program and matches lines whose origin is the ExternalSurfaceOrigin or FulfillmentProgramOrigin with that handle. Supplying neither or both is rejected with INVALID_FILTER_VALUE."""
+input CommercialOriginInput {
+  """Filter on a Wayfair-owned storefront by brand and country."""
+  storefront: MarketContextInput
+  """Filter on an external surface or fulfillment program by stable handle."""
+  handle: CommercialOriginHandleInput
+}
+
+enum CurrencyCode {
+  """Canadian dollar (ISO 4217)."""
+  CAD
+  """Euro (ISO 4217)."""
+  EUR
+  """Pound sterling (ISO 4217)."""
+  GBP
+  """United States dollar (ISO 4217)."""
+  USD
+}
+
+scalar DateTime
+
+"""Standard interval input; from is inclusive, to is exclusive, both UTC RFC 3339."""
+input DateTimeIntervalInput {
+  """Inclusive start of the window, UTC RFC 3339."""
+  from: DateTime!
+  """Exclusive end of the window, UTC RFC 3339. Must be strictly after from."""
+  to: DateTime!
+}
+
+"""Arbitrary-precision decimal, serialised as a JSON string in plain notation so a client decoding JSON numbers as IEEE-754 doubles cannot round a monetary amount. Accepts a string or a number on input."""
+scalar Decimal
+
+"""An amount withheld from the remittance. eventType is DEDUCTION."""
+type DeductionLine {
+  """Remittance batch the line was paid on. Join key from accountReceivablesSummary."""
+  remittanceNumber: String!
+  """Invoice or event identifier on the line (Partner Home Event Id). May be an empty string when the source stored none."""
+  invoiceNumber: String!
+  """Wayfair purchase order number on the line (Partner Home PO Number). May be an empty string when the line is not PO-backed."""
+  purchaseOrderNumber: String!
+  """Line kind. Mirrors the concrete type so clients can branch on a value instead of __typename."""
+  eventType: AccountReceivablesEventType!
+  """Where the order was placed (Partner Home Business). Null when not tied to a named storefront, external surface or fulfillment program."""
+  origin: CommercialOrigin
+  """Date the line was invoiced, at midnight UTC (RFC 3339). Partner Home Event Date."""
+  eventDate: DateTime!
+  """Product-cost component of the line. JSON string on output."""
+  productAmount: Decimal!
+  """Shipping component. JSON string on output."""
+  shippingAmount: Decimal!
+  """Other component (fees, advertising, netting balances). JSON string on output."""
+  otherAmount: Decimal!
+  """Tax / VAT component. JSON string on output."""
+  taxVatAmount: Decimal!
+  """Negative — a deduction reduces the remittance total."""
+  paymentAmount: Decimal!
+  """Sum of allowances; 0 when the line has no allowances (not null)."""
+  allowanceAmount: Decimal!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Itemized allowances on this line (bounded list, not paged). Empty when the line has none."""
+  allowances: [Allowance!]!
+  """Part number from the deduction record; present only on deduction lines."""
+  partNumber: String
+  """Settlement date from the deduction approver record; null until the deduction settles."""
+  deductionSettlementDate: DateTime
+  """Reason category derived from the deduction's credit origin; null when the deduction has no known credit origin."""
+  deductionType: AccountReceivablesDeductionType
+  """Short description of the deduction reason."""
+  deductionDescription: String
+  """Memo from the deduction record; present only on deduction lines."""
+  deductionMemo: String
+  """Partner Home Deduction ID."""
+  creditReference: String!
+  """Whether a new dispute can be raised on this line. Always false once dispute.ticket is present."""
+  isDisputable: Boolean!
+  """Last date a new dispute can be raised (payment date plus 61 days). Null when never eligible."""
+  disputableUntil: DateTime
+  """Partner Home dispute ticket and/or deduction lifecycle outcome. Null when neither is published."""
+  dispute: Dispute
+}
+
+"""A line a dispute can be raised on. Implemented by invoice and deduction lines only — the other line kinds are outside the dispute window entirely, which is why they do not carry these fields at all."""
+interface Disputable {
+  """Whether a new dispute can be raised on this line: it is a disputable line kind and nothing has been raised on it yet. Always false once dispute.ticket is present; a deduction line may carry a dispute with only an outcome (its deduction status) and still be disputable."""
+  isDisputable: Boolean!
+  """Last date a new dispute can be raised: the payment date plus 61 days; null when never eligible."""
+  disputableUntil: DateTime
+  """The dispute raised on this line, or — on a deduction line — its deduction status as outcome; null when there is neither."""
+  dispute: Dispute
+}
+
+"""A dispute raised against a line."""
+type Dispute {
+  """Partner Home ticket reference; null on a deduction line whose status is published without a dispute ticket."""
+  ticket: String
+  """Deep link to the ticket in Partner Home; null when ticket is null."""
+  partnerHomeUrl: String
+  """The deduction's dispute lifecycle status; present on deduction lines, with or without a dispute ticket."""
+  outcome: AccountReceivablesDisputeOutcome
+}
+
+"""A sales surface outside Wayfair on which Wayfair lists the supplier's products (The Knot, eBay, Google Express, Wayfair at Walmart, Staples). These surfaces have no Wayfair market — no brand, no sales channel — so this kind carries no marketContext; do not read its absence as an unknown market. Filter with origin: { handle }."""
+type ExternalSurfaceOrigin {
+  """Stable identifier of the surface, e.g. EBAY, THE_KNOT, GOOGLE_EXPRESS, WAYFAIR_AT_WALMART, STAPLES."""
+  handle: CommercialOriginHandle!
+  """Human-readable origin label (Partner Home Business). Not a stable filter key."""
+  displayName: String!
+}
+
+"""A fulfillment program rather than a place of sale (CastleGate, Multichannel). The program is already named by orderType; the origin is published so every line answers "where did this come from" the same way. A program is not a market, so this kind carries no marketContext. Filter with origin: { handle }."""
+type FulfillmentProgramOrigin {
+  """Stable identifier of the program, e.g. CASTLEGATE, MULTICHANNEL."""
+  handle: CommercialOriginHandle!
+  """Human-readable origin label (Partner Home Business). Not a stable filter key."""
+  displayName: String!
+}
+
+"""An invoiced line — goods shipped against an order, or a service, advertising or rebate invoice with no goods movement of its own. eventType is INVOICE. Mirrors the async report, where the stored PRODUCT charge type is published as INVOICE."""
+type InvoiceLine {
+  """Remittance batch the line was paid on. Join key from accountReceivablesSummary."""
+  remittanceNumber: String!
+  """Invoice or event identifier on the line (Partner Home Event Id). May be an empty string when the source stored none."""
+  invoiceNumber: String!
+  """Wayfair purchase order number on the line (Partner Home PO Number). May be an empty string when the line is not PO-backed."""
+  purchaseOrderNumber: String!
+  """Line kind. Mirrors the concrete type so clients can branch on a value instead of __typename."""
+  eventType: AccountReceivablesEventType!
+  """The order type the line was raised against; null when the stored value is absent or is one this version does not publish."""
+  orderType: AccountReceivablesOrderType
+  """Where the order was placed (Partner Home Business). Null when not tied to a named storefront, external surface or fulfillment program."""
+  origin: CommercialOrigin
+  """Date the line was invoiced, at midnight UTC (RFC 3339). Partner Home Event Date."""
+  eventDate: DateTime!
+  """Product-cost component of the line. JSON string on output."""
+  productAmount: Decimal!
+  """Shipping component. JSON string on output."""
+  shippingAmount: Decimal!
+  """Other component (fees, advertising, netting balances). JSON string on output."""
+  otherAmount: Decimal!
+  """Tax / VAT component. JSON string on output."""
+  taxVatAmount: Decimal!
+  """Net effect on the remittance. Negative when the line reduces the total. Partner Home Payment Amount."""
+  paymentAmount: Decimal!
+  """Sum of allowances; 0 when the line has no allowances (not null)."""
+  allowanceAmount: Decimal!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Itemized allowances on this line (bounded list, not paged). Empty when the line has none."""
+  allowances: [Allowance!]!
+  """Whether a new dispute can be raised on this line. Always false once dispute.ticket is present."""
+  isDisputable: Boolean!
+  """Last date a new dispute can be raised (payment date plus 61 days). Null when never eligible."""
+  disputableUntil: DateTime
+  """Partner Home dispute ticket and/or deduction lifecycle outcome. Null when neither is published."""
+  dispute: Dispute
+}
+
+"""The market a Wayfair storefront sells into. Shared six-dimension output shape (NAME-10); a storefront always populates country, locale, channel and segment; brand is null for a storefront NAME-10 has not assigned a brand code to yet (Wayfair Supply, DwellStudio), and location is null when the storefront is not location-scoped."""
+type MarketContext {
+  """ISO 3166-1 alpha-2, e.g. US, CA, GB, DE, IE."""
+  country: String
+  """Regional BCP 47 locale, e.g. en-US, en-CA, de-DE."""
+  locale: String
+  """Two-letter storefront brand code: WF (WAYFAIR), AM (ALLMODERN), BL (BIRCH_LANE), JM (JOSS_AND_MAIN), PG (PERIGOLD) — the output form of MarketContextBrandInput."""
+  brand: String
+  """Sales channel: ECM (e-commerce storefront) or PHR (Wayfair Professional)."""
+  channel: String
+  """Customer segment: B2C or B2B."""
+  segment: String
+  """Location within the market; null when the storefront is not location-scoped."""
+  location: String
+}
+
+"""Shared brand input enum (NAME-10). Input values are full brand names; the output MarketContext.brand publishes the corresponding two-letter storefront code."""
+enum MarketContextBrandInput {
+  """Wayfair brand (published as WF)."""
+  WAYFAIR
+  """AllModern brand (published as AM)."""
+  ALLMODERN
+  """Joss & Main brand (published as JM)."""
+  JOSS_AND_MAIN
+  """Birch Lane brand (published as BL)."""
+  BIRCH_LANE
+  """Perigold brand (published as PG)."""
+  PERIGOLD
+}
+
+"""Shared market-context input (NAME-10): the brand-plus-country subset. brand and country are both required because together they are a Wayfair storefront's identity ({ brand: WAYFAIR, country: "CA" } is Wayfair Canada). Matches every sales channel of that storefront. A brand-and-country pair no Wayfair storefront sells into is rejected with INVALID_FILTER_VALUE."""
+input MarketContextInput {
+  """ISO 3166-1 alpha-2 code, e.g. US, CA."""
+  country: String!
+  brand: MarketContextBrandInput!
+}
+
+"""A balance netted off against the remittance. eventType is NETTING."""
+type NettingLine {
+  """Remittance batch the line was paid on. Join key from accountReceivablesSummary."""
+  remittanceNumber: String!
+  """Invoice or event identifier on the line (Partner Home Event Id). May be an empty string when the source stored none."""
+  invoiceNumber: String!
+  """Wayfair purchase order number on the line (Partner Home PO Number). May be an empty string when the line is not PO-backed."""
+  purchaseOrderNumber: String!
+  """Line kind. Mirrors the concrete type so clients can branch on a value instead of __typename."""
+  eventType: AccountReceivablesEventType!
+  """The order type the balance was netted against — most often a service, advertising or rebate type; null when the stored value is absent or is one this version does not publish."""
+  orderType: AccountReceivablesOrderType
+  """Where the order was placed (Partner Home Business). Null when not tied to a named storefront, external surface or fulfillment program."""
+  origin: CommercialOrigin
+  """Date the line was invoiced, at midnight UTC (RFC 3339). Partner Home Event Date."""
+  eventDate: DateTime!
+  """Product-cost component of the line. JSON string on output."""
+  productAmount: Decimal!
+  """Shipping component. JSON string on output."""
+  shippingAmount: Decimal!
+  """Other component (fees, advertising, netting balances). JSON string on output."""
+  otherAmount: Decimal!
+  """Tax / VAT component. JSON string on output."""
+  taxVatAmount: Decimal!
+  """Net effect on the remittance. Negative when the line reduces the total. Partner Home Payment Amount."""
+  paymentAmount: Decimal!
+  """Sum of allowances; 0 when the line has no allowances (not null)."""
+  allowanceAmount: Decimal!
+  """ISO 4217 alpha-3; scopes every monetary amount on this row."""
+  currency: CurrencyCode!
+  """Itemized allowances on this line (bounded list, not paged). Empty when the line has none."""
+  allowances: [Allowance!]!
+}
+
+"""Platform connection pageInfo for remittance list operations. Declared locally until the shared Partner Home API Platform type is published; field names and values match the shared contract."""
+type PageInfo {
+  """True when a further page exists after this one."""
+  hasNextPage: Boolean!
+  """True when this page is non-empty and was reached with after, so rows exist before its first node. An empty page reports false."""
+  hasPreviousPage: Boolean!
+  """Opaque cursor of this page's first node. Null only on an empty page."""
+  startCursor: String
+  """Opaque cursor of this page's last node; pass as after. Null only on an empty page."""
+  endCursor: String
+}
+
+"""Payment instrument family a remittance was settled with. OTHER covers a remittance settled outside the named families, including one the source system records without an instrument (a reversal or a zero-amount adjustment)."""
+enum RemittancePaymentMethod {
+  """ACH / automated clearing house settlement."""
+  ACH
+  """Bank transfer (non-wire family)."""
+  BANK_TRANSFER
+  """Cheque settlement."""
+  CHEQUE
+  """Card family (no PAN published)."""
+  CREDIT_CARD
+  """Manual settlement."""
+  MANUAL
+  """Netted settlement."""
+  NETTED
+  """Unnamed or missing instrument (including reversals)."""
+  OTHER
+  """Wire transfer."""
+  WIRE
+}
+
+"""Direction a list is ordered in."""
+enum SortDirectionInput {
+  """Ascending order (earliest / smallest first)."""
+  ASC
+  """Descending order (latest / largest first)."""
+  DESC
+}
+
+"""A storefront Wayfair owns and operates (Wayfair, AllModern, Birch Lane, Joss & Main, Perigold, Wayfair Supply and their country editions). This is the only origin kind with a market: every Wayfair storefront sells one brand into one country over one sales channel, so marketContext is always present here and absent on every other origin kind. The market is the storefront's identity: there is no separate handle, so group or compare storefronts on marketContext.brand, marketContext.country and marketContext.channel rather than on a name, and filter with origin: { storefront: { brand, country } }."""
+type StorefrontOrigin {
+  """Human-readable origin label (Partner Home Business). Not a stable filter key."""
+  displayName: String!
+  """The market the storefront sells into: brand, country and sales channel at minimum."""
+  marketContext: MarketContext!
+}
